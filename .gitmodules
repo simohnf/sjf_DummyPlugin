@@ -1,0 +1,6 @@
+[submodule "sjf_audio"]
+	path = sjf_audio
+	url = git@github.com:simohnf/sjf_audio.git
+[submodule "JUCE"]
+	path = JUCE
+	url = git@github.com:juce-framework/JUCE.git
