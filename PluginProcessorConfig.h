@@ -4,7 +4,7 @@
 #pragma once
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_PresetManager.h>
-#include <sjf/helpers/sjf_Chunker.h>
+#include <sjf/helpers/sjf_ChunkedWrapper.h>
 #include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/helpers/sjf_BypassWrapper.h>
 
@@ -15,7 +15,7 @@ namespace sjf::plugin_processor_config
     struct Config
     {
         // Simply change this alias target to swap out the active core engine
-        using Processor = sjf::helpers::Chunker<sjf::helpers::ProcessorSequence<sjf::helpers::BypassWrapper<sjf::Delay>>>;
+        using Processor = sjf::helpers::Chunker<sjf::helpers::ProcessorSequence<sjf::helpers::BypassWrapper<sjf::DummyProcessor>>>;
 
         template<typename Processor>
         static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout(Processor& processor)
