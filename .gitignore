@@ -45,3 +45,5 @@ $RECYCLE.BIN/
 
 # NFS temporary files
 .nfs*
+
+/.idea/
