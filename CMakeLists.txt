@@ -16,6 +16,11 @@ cmake_minimum_required(VERSION 3.22)
 
 project(DUMMY_PLUGIN VERSION 0.0.1)
 
+# 2. ACTIVATE C++20 HERE (Before adding any subdirectories or targets)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 # If you've installed JUCE somehow (via a package manager, or directly using the CMake install
 # target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
 # included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
@@ -51,7 +56,7 @@ juce_add_plugin(DummyPlugin
         PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Dumm                            # A unique four-character plugin id with exactly one upper-case character
         # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
-        FORMATS AUv3 VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
+        FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
         PRODUCT_NAME "Dummy Plugin"         # The name of the final executable, which can differ from the target name
         NEEDS_WEB_BROWSER FALSE                     # Set to TRUE if you need to use webviews
         NEEDS_CURL FALSE)                           # Set to TRUE if you need to use curl
@@ -134,3 +139,5 @@ target_link_libraries(DummyPlugin
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+
