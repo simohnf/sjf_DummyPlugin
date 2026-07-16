@@ -18,12 +18,18 @@ namespace sjf::plugin_processor_config
 {
     struct Config
     {
-        using Delay = sjf::dsp::Delay<  dsp::delay_config::TempoSync,
+        using LFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::DefaultWaveformProvider,
+                                                    dsp::oscillators::lfo::config::TempoSync,
+                                                    dsp::oscillators::lfo::config::Invert,
+                                                    dsp::oscillators::lfo::config::PhaseOffset,
+                                                    dsp::oscillators::lfo::config::Smooth,
+                                                    dsp::oscillators::lfo::config::Depth>;
+        using Delay = sjf::dsp::Delay<  LFO,
+                                        dsp::delay_config::TempoSync,
                                         dsp::delay_config::Filter,
                                         dsp::delay_config::Detune,
                                         dsp::delay_config::Saturation,
                                         dsp::delay_config::PingPong,
-                                        dsp::delay_config::Modulation,
                                         dsp::delay_config::Link,
                                         dsp::delay_config::LFOTempoSync>;
 
