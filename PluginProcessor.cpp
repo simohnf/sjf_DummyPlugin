@@ -142,15 +142,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
 
 
+    if ( auto playHead = getPlayHead())
+    {
+        auto positionInfo = playHead->getPosition();
+        if (positionInfo.hasValue())
+        {
+            processor.setPositionInfo(positionInfo);
+        }
+    }
+
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
     processor.process(context);
 
-    for ( auto p : getParameterTree().getParameters(true))
-        if ( auto r = dynamic_cast<RangedAudioParameter*>(p))
-            DBG(r->getParameterID() << " " << r->convertFrom0to1(r->getValue()));
-
-    DBG("");
 }
 
 //==============================================================================
