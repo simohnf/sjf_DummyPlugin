@@ -24,11 +24,19 @@ namespace sjf::plugin_processor_config
                                                     dsp::oscillators::lfo::config::PhaseOffset,
                                                     dsp::oscillators::lfo::config::Smooth,
                                                     dsp::oscillators::lfo::config::Depth>;
+
+        using Saturator = sjf::dsp::waveshaper::WaveshaperTypeProvider  <   dsp::waveshaper::SoftClip,
+                                                                            dsp::waveshaper::HardClip,
+                                                                            dsp::waveshaper::Overdrive,
+                                                                            dsp::waveshaper::BucketBrigade,
+                                                                            dsp::waveshaper::Tape
+                                                                        >;
+
         using Delay = sjf::dsp::Delay<  LFO,
+                                        Saturator,
                                         dsp::delay_config::TempoSync,
                                         dsp::delay_config::Filter,
                                         dsp::delay_config::Detune,
-                                        dsp::delay_config::Saturation,
                                         dsp::delay_config::PingPong,
                                         dsp::delay_config::Link,
                                         dsp::delay_config::LFOTempoSync>;
