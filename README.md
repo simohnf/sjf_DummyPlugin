@@ -14,8 +14,6 @@ Currently demonstrates a maximal Delay example with:
 
 ## To create a new Plugin
 
-----
-
 On Mac
 
 Open Terminal and go to the directory in which you want to. save the project, e.g.
@@ -39,3 +37,12 @@ chmod 744 sjf_DummyPlugin/updateProjectName.sh
 
 
 You can then edit the ```PluginProcessorConfig.h``` file to set the Processor/Sequence to be used and the relative ids and names to be used for parameter groups 
+
+
+----
+
+### TO DO
+
+- Save & load presets
+- Generate parameter version hints
+
