@@ -1,6 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-
+#include <sjf/widgets/sjf_GenericEditor.h>
 
 
 //==============================================================================
@@ -165,7 +165,7 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new sjf::generic_editor::GenericEditor (*this);
     // return new AudioPluginAudioProcessorEditor (*this);
 }
 
