@@ -109,12 +109,6 @@ target_compile_definitions(DummyPlugin
 # here too. This is a standard CMake command.
 
 
-juce_add_module("${CMAKE_CURRENT_SOURCE_DIR}/sjf_audio/sjf_helpers")
-target_include_directories(sjf_helpers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/sjf_audio/sjf_helpers")
-
-juce_add_module("${CMAKE_CURRENT_SOURCE_DIR}/sjf_audio/sjf_dsp")
-target_include_directories(sjf_helpers INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/sjf_audio/sjf_dsp")
-
 target_link_libraries(DummyPlugin
         PRIVATE
         # AudioPluginData           # If we'd created a binary data target, we'd link to it here
@@ -134,6 +128,7 @@ target_link_libraries(DummyPlugin
 
         sjf_helpers
         sjf_dsp
+        sjf_gui
 
         PUBLIC
         juce::juce_recommended_config_flags
