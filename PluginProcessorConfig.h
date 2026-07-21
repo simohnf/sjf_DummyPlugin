@@ -57,16 +57,12 @@ namespace sjf::plugin_processor_config
         {
             juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-            // Create the master group
-            auto mainGroup = sjf::helpers::ParameterFactory::create ("Parameters", "Parameters");
-
             using namespace sjf::helpers::processor_sequence;
 
-            layout.add(processor.createParameters   ("", "",
-                                                            SubFactoryConfig{"Dummy", "Dummy"}
+            layout.add(processor.createParameters   ("FX", "FX",
+                                                            SubFactoryConfig{"Delay", "Delay"}
                                                             // add extra configs for each processor
-                                                            )
-                                                    );
+                                                            ));
             return layout;
         }
 
