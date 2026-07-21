@@ -8,10 +8,7 @@
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
 #include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/helpers/sjf_BypassWrapper.h>
-
-
 #include <sjf/helpers/sjf_DummyProcessor.h>
-
 #include "sjf/helpers/sjf_OversamplingWrapper.h"
 #include "sjf/processors/sjf_Delay.h"
 
