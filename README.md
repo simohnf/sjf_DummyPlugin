@@ -31,17 +31,15 @@ cd ~/Desktop
 ```
 Then, using https
 ```shell
-rm -rf DummyPlugin
+rm -rf sjf_DummyPlugin
 git clone https://github.com/simohnf/sjf_DummyPlugin.git
-chmod 744 sjf_DummyPlugin/updateProjectName.sh
-./sjf_DummyPlugin/updateProjectName.sh
+python3 sjf_DummyPlugin/Setup/initialise_project.py
 ```
 or using ssh
 ```shell
-rm -rf DummyPlugin
+rm -rf sjf_DummyPlugin
 git clone git@github.com:simohnf/sjf_DummyPlugin.git
-chmod 744 sjf_DummyPlugin/updateProjectName.sh
-./sjf_DummyPlugin/updateProjectName.sh
+python3 sjf_DummyPlugin/Setup/initialise_project.py
 ```
 
 

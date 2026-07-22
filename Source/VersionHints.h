@@ -13,7 +13,7 @@
 namespace sjf::version_hints
 {
     // The master map of known parameter IDs to their Version Hints
-    // You should delete everything in this map when creating a new project
+    // You can delete everything inside this map to regenerate the entire list
     inline static std::unordered_map<std::string, int> hints = {
         // Automatically populated at runtime during Debug builds
     };
