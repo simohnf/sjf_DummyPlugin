@@ -1,3 +1,12 @@
+```
+███████╗     ██╗███████╗    █████╗ ██╗   ██╗██████╗ ██╗ ██████╗
+██╔════╝     ██║██╔════╝   ██╔══██╗██║   ██║██╔══██╗██║██╔═══██╗
+███████╗     ██║█████╗     ███████║██║   ██║██║  ██║██║██║   ██║
+╚════██║██   ██║██╔══╝     ██╔══██║██║   ██║██║  ██║██║██║   ██║
+███████║╚█████╔╝██║███████╗██║  ██║╚██████╔╝██████╔╝██║╚██████╔╝
+╚══════╝ ╚════╝ ╚═╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝ ╚═════╝
+```
+
 # Dummy Project
 
 Simple dummy juce project for use when creating plugins.
@@ -40,9 +49,4 @@ You can then edit the ```PluginProcessorConfig.h``` file to set the Processor/Se
 
 
 ----
-
-### TO DO
-
-- Save & load presets
-- Generate parameter version hints
 
