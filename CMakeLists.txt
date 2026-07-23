@@ -102,16 +102,16 @@ target_compile_definitions(DummyPlugin
 
 # juce_add_binary_data(AudioPluginData SOURCES ...)
 
+
 # `target_link_libraries` links libraries and JUCE modules to other libraries or executables. Here,
 # we're linking our executable target to the `juce::juce_audio_utils` module. Inter-module
 # dependencies are resolved automatically, so `juce_core`, `juce_events` and so on will also be
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
+target_include_directories(DummyPlugin PRIVATE Source)
 
-target_link_libraries(DummyPlugin
-        PRIVATE
-        # AudioPluginData           # If we'd created a binary data target, we'd link to it here
+set(MODULES
         juce::juce_analytics
         juce::juce_animation
         juce::juce_audio_utils
@@ -129,10 +129,27 @@ target_link_libraries(DummyPlugin
         sjf_helpers
         sjf_dsp
         sjf_gui
+)
 
-        PUBLIC
+set(FLAGS
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+        juce::juce_recommended_warning_flags
+)
 
+target_link_libraries(DummyPlugin
+        PRIVATE
+        # AudioPluginData           # If we'd created a binary data target, we'd link to it here
+        ${MODULES}
 
+        PUBLIC
+        ${FLAGS}
+)
+
+include(sjf_audio/sjf_UnitTester/cmake/unit_tester.cmake)
+sjf_add_juce_unit_test_target("DummyPlugin"
+        MODULES
+            ${MODULES}
+        FLAGS
+            ${FLAGS}
+)
