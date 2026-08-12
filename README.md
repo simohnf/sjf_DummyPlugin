@@ -17,6 +17,9 @@ Currently demonstrates an audio chain containing:
     - Delay with modulation, saturation, filtering
     - Reverb 
     - Waveshaper
+    - Compressor
+    - Flanger
+    - Chorus
     - 2 * Filter
     - Optional oversampling over entire chain
 - Limiter
