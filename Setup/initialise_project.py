@@ -37,6 +37,7 @@ def main():
     # 3. String transformations
     underscores = project_name.replace(" ", "_")
     all_caps = underscores.upper()
+    pluginCode = project_name.replace(" ", "").lower().title()[:4]
 
     target_dir = repo_root / underscores
 
@@ -55,6 +56,7 @@ def main():
         content = content.replace("Dummy Plugin", project_name)
         content = content.replace("DummyPlugin", underscores)
         content = content.replace("DUMMY_PLUGIN", all_caps)
+        content = content.replace("PLUGIN_CODE Dumm", "PLUGIN_CODE "+pluginCode)
 
         cmakelists_path.write_text(content, encoding="utf-8")
     else:
