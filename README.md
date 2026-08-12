@@ -11,12 +11,14 @@
 
 Simple dummy juce project for use when creating plugins.
 
-Currently demonstrates a maximal Delay example with:
-- Filtering
-- Saturation
-- Modulation
-- Detune
-- Oversampling
+Currently demonstrates an oversampled audio chain containing:
+
+- A dynamic processing chain with:
+    - Delay with modulation, saturation, filtering
+    - Reverb 
+    - Waveshaper
+    - 2 * Filter
+- Limiter
 
 
 ----
