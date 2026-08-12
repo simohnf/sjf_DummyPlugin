@@ -14,6 +14,38 @@ def run_git(args, cwd):
     except subprocess.CalledProcessError as e:
         print(f"Git warning/notice ({' '.join(args)}): {e.stderr.strip()}")
 
+def makeCode(str):
+    name = str
+    words = name.split()
+    ret = ""
+    w = 0
+
+    while len(ret) < 4:
+        # Fallback if we run out of words before reaching 4 characters
+        if len(words) == 0:
+            i = 0
+            while len(ret) < 4:
+                ret += str(i)
+                i += 1
+            break
+
+        # Extract the first character of the current word
+        if len(words[w]) > 0:
+            ret += words[w][0]
+            words[w] = words[w][1:]
+
+        # If the word is now empty, remove it from the list
+        if len(words[w]) == 0:
+            words = words[:w] + words[w + 1 :]
+        else:
+            w += 1
+
+        # Wrap around to the beginning of the word list
+        if w >= len(words):
+            w = 0
+
+    return ret
+
 def main():
     repo_root = Path.cwd()
     template_dir = repo_root / "sjf_DummyPlugin"
@@ -37,7 +69,7 @@ def main():
     # 3. String transformations
     underscores = project_name.replace(" ", "_")
     all_caps = underscores.upper()
-    pluginCode = project_name.replace(" ", "").lower().title()[:4]
+    pluginCode = makeCode(project_name)
 
     target_dir = repo_root / underscores
 
