@@ -67,7 +67,8 @@ namespace sjf::plugin_processor_config
 
         // using Seq = sjf::helpers::BypassWrapper <Sequence,Bypass,Mix>;
         using Seq = sjf::helpers::BypassWrapper <sjf::helpers::OversamplingWrapper<Sequence>,Bypass,Mix>;
-        using Limit = sjf::helpers::BypassWrapper <sjf::dsp::Limiter<>,Bypass>;
+
+        using Limit = sjf::helpers::BypassWrapper <sjf::dsp::Limiter,Bypass>;
 
         // Simply change this alias target to swap out the active core engine
         using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<Seq, Limit> >;
