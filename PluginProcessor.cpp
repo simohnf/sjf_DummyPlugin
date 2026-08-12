@@ -13,9 +13,9 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                    .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                  #endif
                    )
-, params(*this, &undoManager, "Params", sjf::plugin_processor_config::Config::createParameterLayout(processor))
+, params(*this, &undoManager, "Params", sjf::plugin_processor_config::Config::createParameterLayout(processor, groupMetaData))
 {
-
+    sjf::optional_calls::attachToState(processor, params.state);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -167,7 +167,7 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new sjf::generic_editor::GenericEditor (*this);
+    return new sjf::generic_editor::GenericEditor (params, *this, *groupMetaData);
     // return new AudioPluginAudioProcessorEditor (*this);
 }
 
@@ -180,7 +180,10 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
+    {
         params.replaceState(loadedTree);
+        sjf::optional_calls::attachToState(processor, params.state);
+    }
 }
 
 //==============================================================================

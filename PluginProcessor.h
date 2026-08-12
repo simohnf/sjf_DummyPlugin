@@ -48,7 +48,7 @@ private:
     //==============================================================================
     UndoManager undoManager;
     sjf::plugin_processor_config::Config::Processor processor;
-
+    std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata> groupMetaData{nullptr};
     juce::AudioProcessorValueTreeState params;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)

@@ -11,19 +11,26 @@
 //
 #pragma once
 
+#include "sjf/helpers/sjf_OversamplingWrapper.h"
+#include "sjf/processors/Reverbs/sjf_ReverbPlayground.h"
+#include "sjf/processors/Waveshaper/sjf_Waveshaper.h"
+#include "sjf/processors/sjf_Delay.h"
+#include <sjf/helpers/sjf_BypassWrapper.h>
+#include <sjf/helpers/sjf_ChunkedWrapper.h>
+#include <sjf/helpers/sjf_DummyProcessor.h>
+#include <sjf/helpers/sjf_DynamicProcessorSequence.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_PresetManager.h>
-#include <sjf/helpers/sjf_ChunkedWrapper.h>
 #include <sjf/helpers/sjf_ProcessorSequence.h>
-#include <sjf/helpers/sjf_BypassWrapper.h>
-#include <sjf/helpers/sjf_DummyProcessor.h>
-#include "sjf/helpers/sjf_OversamplingWrapper.h"
-#include "sjf/processors/sjf_Delay.h"
-
+#include <sjf/processors/sjf_Limiter_juce.h>
+#include <sjf/processors/sjf_Filter_juce.h>
 namespace sjf::plugin_processor_config
 {
+    using namespace sjf::helpers::bypass_wrapper_config;
+
     struct Config
     {
+
         using LFO = sjf::dsp::oscillators::lfo::LFO<dsp::oscillators::lfo::DefaultWaveformProvider,
                                                     dsp::oscillators::lfo::lfo_config::TempoSync,
                                                     dsp::oscillators::lfo::lfo_config::Invert,
@@ -38,6 +45,8 @@ namespace sjf::plugin_processor_config
                                                                             dsp::waveshaper::Tape
                                                                         >;
 
+        using Waveshaper = sjf::dsp::waveshaper::FilteredWaveshaper<Saturator>;
+
         using Delay = sjf::dsp::Delay<  LFO,
                                         Saturator,
                                         // dsp::delay_config::Mono,
@@ -49,28 +58,41 @@ namespace sjf::plugin_processor_config
                                         dsp::delay_config::PingPong,
                                         dsp::delay_config::Link>;
 
+        using Sat = sjf::helpers::BypassWrapper <Waveshaper,Bypass,Mix>;
+        using Del = sjf::helpers::BypassWrapper <Delay,Bypass,Mix>;
+        using Rev = sjf::helpers::BypassWrapper <sjf::dsp::Reverb,Bypass,Mix>;
+        using Fil = sjf::helpers::BypassWrapper <sjf::dsp::SVF<>,Bypass,Mix>;
+
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Fil, Fil>;
+
+        // using Seq = sjf::helpers::BypassWrapper <Sequence,Bypass,Mix>;
+        using Seq = sjf::helpers::BypassWrapper <sjf::helpers::OversamplingWrapper<Sequence>,Bypass,Mix>;
+        using Limit = sjf::helpers::BypassWrapper <sjf::dsp::Limiter<>,Bypass,Mix>;
+
         // Simply change this alias target to swap out the active core engine
-        using Processor = sjf::helpers::ChunkedWrapper  <
-                                sjf::helpers::ProcessorSequence <
-                                        sjf::helpers::BypassWrapper <
-                                                sjf::helpers::OversamplingWrapper<Delay>,
-                                                sjf::helpers::bypass_wrapper_config::Bypass,
-                                                sjf::helpers::bypass_wrapper_config::Mix
-                                                                    >
-                                                                >
-                                                        >;
+        using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<Seq, Limit> >;
 
         template<typename Processor>
-        static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout(Processor& processor)
-        {
+        static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout(Processor& processor, std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata>& groupMetadata) {
             juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
             using namespace sjf::helpers::processor_sequence;
+            using SFC = SubFactoryConfig;
 
-            layout.add(processor.createParameters   ("FX", "FX",
-                                                            SubFactoryConfig{"Delay", "Delay"}
-                                                            // add extra configs for each processor
-                                                            ));
+
+            auto factory = processor.createParameters   ("FX", "FX",
+                                                                    NestedConfig{
+                                                                        "Chain", "Chain",
+                                                                        SFC{"Sat", "Saturator"},
+                                                                        SFC{"Del", "Delay"},
+                                                                        SFC{"Rev", "Reverb"},
+                                                                        SFC{"Filt1", "Filter"},
+                                                                        SFC{"Filt2", "Filter"}
+                                                                    },
+                                                                    SFC{"Limiter", "Limiter"}
+                                                            );
+            groupMetadata = std::make_unique<sjf::helpers::ParameterFactory::GroupMetadata>( helpers::ParameterFactory::createMetadataTree(*factory));
+            layout.add(std::move(factory));
             return layout;
         }
 
