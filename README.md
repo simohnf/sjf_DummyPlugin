@@ -11,13 +11,14 @@
 
 Simple dummy juce project for use when creating plugins.
 
-Currently demonstrates an oversampled audio chain containing:
+Currently demonstrates an audio chain containing:
 
 - A dynamic processing chain with:
     - Delay with modulation, saturation, filtering
     - Reverb 
     - Waveshaper
     - 2 * Filter
+    - Optional oversampling over entire chain
 - Limiter
 
 
