@@ -14,6 +14,7 @@
 #include "sjf/helpers/sjf_OversamplingWrapper.h"
 #include "sjf/processors/Reverbs/sjf_ReverbPlayground.h"
 #include "sjf/processors/Waveshaper/sjf_Waveshaper.h"
+#include "sjf/processors/sjf_Compressor_juce.h"
 #include "sjf/processors/sjf_Delay.h"
 #include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
@@ -22,8 +23,8 @@
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_PresetManager.h>
 #include <sjf/helpers/sjf_ProcessorSequence.h>
-#include <sjf/processors/sjf_Limiter_juce.h>
 #include <sjf/processors/sjf_Filter_juce.h>
+#include <sjf/processors/sjf_Limiter_juce.h>
 namespace sjf::plugin_processor_config
 {
     using namespace sjf::helpers::bypass_wrapper_config;
@@ -62,8 +63,9 @@ namespace sjf::plugin_processor_config
         using Del = sjf::helpers::BypassWrapper <Delay,Bypass,Mix>;
         using Rev = sjf::helpers::BypassWrapper <sjf::dsp::Reverb,Bypass,Mix>;
         using Fil = sjf::helpers::BypassWrapper <sjf::dsp::SVF<>,Bypass,Mix>;
+        using Comp = sjf::helpers::BypassWrapper <sjf::dsp::Compressor,Bypass, Mix>;
 
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Fil, Fil>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil>;
 
         // using Seq = sjf::helpers::BypassWrapper <Sequence,Bypass,Mix>;
         using Seq = sjf::helpers::BypassWrapper <sjf::helpers::OversamplingWrapper<Sequence>,Bypass,Mix>;
@@ -87,6 +89,7 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Sat", "Saturator"},
                                                                         SFC{"Del", "Delay"},
                                                                         SFC{"Rev", "Reverb"},
+                                                                        SFC{"Comp", "Compressor"},
                                                                         SFC{"Filt1", "Filter"},
                                                                         SFC{"Filt2", "Filter"}
                                                                     },
