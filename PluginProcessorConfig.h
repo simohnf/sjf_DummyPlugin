@@ -26,6 +26,7 @@
 #include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
+#include <sjf/helpers/sjf_Gain.h>
 namespace sjf::plugin_processor_config
 {
     using namespace sjf::helpers::bypass_wrapper_config;
@@ -68,7 +69,10 @@ namespace sjf::plugin_processor_config
         using Chorus = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Chorus,Bypass, Mix>;
         using Flanger = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Flanger,Bypass, Mix>;
 
+
         using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger>;
+
+        using Gain = sjf::helpers::Gain<>;
 
         // using Seq = sjf::helpers::BypassWrapper <Sequence,Bypass,Mix>;
         using Seq = sjf::helpers::BypassWrapper <sjf::helpers::OversamplingWrapper<Sequence>,Bypass,Mix>;
@@ -76,7 +80,7 @@ namespace sjf::plugin_processor_config
         using Limit = sjf::helpers::BypassWrapper <sjf::dsp::Limiter,Bypass>;
 
         // Simply change this alias target to swap out the active core engine
-        using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<Seq, Limit> >;
+        using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<Gain, Seq, Limit, Gain> >;
 
         template<typename Processor>
         static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout(Processor& processor, std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata>& groupMetadata) {
@@ -87,6 +91,7 @@ namespace sjf::plugin_processor_config
 
 
             auto factory = processor.createParameters   ("FX", "FX",
+                                                                    SFC{"InGain", "Input Gain"},
                                                                     NestedConfig{
                                                                         "Chain", "Chain",
                                                                         SFC{"Sat", "Saturator"},
@@ -98,7 +103,8 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Chor", "Chorus"},
                                                                         SFC{"Flan", "Flanger"},
                                                                     },
-                                                                    SFC{"Limiter", "Limiter"}
+                                                                    SFC{"Limiter", "Limiter"},
+                                                                    SFC{"OutGain", "Output Gain"}
                                                             );
             groupMetadata = std::make_unique<sjf::helpers::ParameterFactory::GroupMetadata>( helpers::ParameterFactory::createMetadataTree(*factory));
             layout.add(std::move(factory));
