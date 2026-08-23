@@ -16,17 +16,21 @@
 #include "sjf/processors/Waveshaper/sjf_Waveshaper.h"
 #include "sjf/processors/sjf_Compressor_juce.h"
 #include "sjf/processors/sjf_Delay.h"
+#include "sjf/processors/sjf_Exciter.h"
+#include "sjf/processors/sjf_Redux.h"
+#include "sjf/processors/sjf_Utility.h"
+#include "sjf_audio/sjf_helpers/sjf/helpers/Utility/sjf_GainWrapper.h"
 
 #include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
 #include <sjf/helpers/sjf_DummyProcessor.h>
 #include <sjf/helpers/sjf_DynamicProcessorSequence.h>
+#include <sjf/helpers/sjf_Gain.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
 #include <sjf/helpers/sjf_PresetManager.h>
 #include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
-#include <sjf/helpers/sjf_Gain.h>
 namespace sjf::plugin_processor_config
 {
     using namespace sjf::helpers::bypass_wrapper_config;
@@ -68,11 +72,15 @@ namespace sjf::plugin_processor_config
         using Comp = sjf::helpers::BypassWrapper <sjf::dsp::Compressor,Bypass, Mix>;
         using Chorus = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Chorus,Bypass, Mix>;
         using Flanger = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Flanger,Bypass, Mix>;
+        using Exciter = sjf::helpers::BypassWrapper <sjf::helpers::GainWrapper<sjf::dsp::Exciter, true, false>,Bypass, Mix>;
+        using Utility = sjf::helpers::BypassWrapper < sjf::dsp::LiveUtility, Bypass, Mix>;
+        using Redux = sjf::helpers::BypassWrapper < sjf::dsp::Redux, Bypass, Mix>;
 
-
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux>;
 
         using Gain = sjf::helpers::Gain<>;
+
+
 
         // using Seq = sjf::helpers::BypassWrapper <Sequence,Bypass,Mix>;
         using Seq = sjf::helpers::BypassWrapper <sjf::helpers::OversamplingWrapper<Sequence>,Bypass,Mix>;
@@ -102,6 +110,9 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Filt2", "Filter"},
                                                                         SFC{"Chor", "Chorus"},
                                                                         SFC{"Flan", "Flanger"},
+                                                                        SFC{"Air", "Exciter"},
+                                                                        SFC{"Util", "Utility"},
+                                                                        SFC{"Redux", "Redux"},
                                                                     },
                                                                     SFC{"Limiter", "Limiter"},
                                                                     SFC{"OutGain", "Output Gain"}
