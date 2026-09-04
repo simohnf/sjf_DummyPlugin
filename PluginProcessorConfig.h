@@ -74,8 +74,8 @@ namespace sjf::plugin_processor_config
         using Rev = sjf::helpers::BypassWrapper <sjf::dsp::Reverb,Bypass,Mix>;
         using Fil = sjf::helpers::BypassWrapper <sjf::dsp::SVF<>,Bypass,Mix>;
         using Comp = sjf::helpers::BypassWrapper <sjf::dsp::Compressor,Bypass, Mix>;
-        using Chorus = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Chorus,Bypass, Mix>;
-        using Flanger = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Flanger,Bypass, Mix>;
+        using Chorus = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Chorus,Bypass, Mix, DefaultMixLevel<50.0f>>;
+        using Flanger = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Flanger,Bypass, Mix, DefaultMixLevel<50.0f>>;
         using Exciter = sjf::helpers::BypassWrapper <sjf::helpers::GainWrapper<sjf::dsp::Exciter, true, false>,Bypass, Mix>;
         using Utility = sjf::helpers::BypassWrapper < sjf::dsp::LiveUtility, Bypass, Mix>;
         using Redux = sjf::helpers::BypassWrapper < sjf::dsp::Redux, Bypass, Mix>;
