@@ -167,7 +167,7 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new sjf::generic_editor::GenericEditor (params, *this, *groupMetaData);
+    return new sjf::generic_editor::GenericEditor (params, *this, *groupMetaData, &undoManager);
     // return new AudioPluginAudioProcessorEditor (*this);
 }
 
