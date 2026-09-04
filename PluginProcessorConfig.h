@@ -11,15 +11,17 @@
 //
 #pragma once
 
-#include "sjf/helpers/sjf_OversamplingWrapper.h"
-#include "sjf/processors/Reverbs/sjf_ReverbPlayground.h"
-#include "sjf/processors/Waveshaper/sjf_Waveshaper.h"
-#include "sjf/processors/sjf_Compressor_juce.h"
-#include "sjf/processors/sjf_Delay.h"
-#include "sjf/processors/sjf_Exciter.h"
-#include "sjf/processors/sjf_Redux.h"
-#include "sjf/processors/sjf_Utility.h"
-#include "sjf_audio/sjf_helpers/sjf/helpers/Utility/sjf_GainWrapper.h"
+#include <sjf/helpers/sjf_OversamplingWrapper.h>
+#include <sjf/processors/Reverbs/sjf_ReverbPlayground.h>
+#include <sjf/processors/Waveshaper/sjf_Waveshaper.h>
+#include <sjf/processors/sjf_Compressor_juce.h>
+#include <sjf/processors/sjf_Delay.h>
+#include <sjf/processors/sjf_Exciter.h>
+#include <sjf/processors/sjf_Redux.h>
+#include <sjf/processors/sjf_Tremolo.h>
+#include <sjf/processors/sjf_Utility.h>
+#include <sjf/processors/sjf_StereoSpread.h>
+#include <sjf/helpers/Utility/sjf_GainWrapper.h>
 
 #include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
@@ -31,6 +33,8 @@
 #include <sjf/helpers/sjf_ProcessorSequence.h>
 #include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
+#include <sjf/processors/sjf_SpectralProcessor.h>
+
 namespace sjf::plugin_processor_config
 {
     using namespace sjf::helpers::bypass_wrapper_config;
@@ -75,8 +79,11 @@ namespace sjf::plugin_processor_config
         using Exciter = sjf::helpers::BypassWrapper <sjf::helpers::GainWrapper<sjf::dsp::Exciter, true, false>,Bypass, Mix>;
         using Utility = sjf::helpers::BypassWrapper < sjf::dsp::LiveUtility, Bypass, Mix>;
         using Redux = sjf::helpers::BypassWrapper < sjf::dsp::Redux, Bypass, Mix>;
+        using Spread = sjf::helpers::BypassWrapper < sjf::dsp::StereoSpread, Bypass, Mix>;
+        using Tremolo = sjf::helpers::BypassWrapper < sjf::dsp::BasicTremolo, Bypass, Mix>;
+        using SpectralProc = sjf::helpers::BypassWrapper < sjf::dsp::SpectralProcessor<>, Bypass, Mix>;
 
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc>;
 
         using Gain = sjf::helpers::Gain<>;
 
@@ -113,6 +120,9 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Air", "Exciter"},
                                                                         SFC{"Util", "Utility"},
                                                                         SFC{"Redux", "Redux"},
+                                                                        SFC{"Spread", "Spread"},
+                                                                        SFC{"Trem", "Tremolo"},
+                                                                        SFC{"Spectral", "Spectral Processor"},
                                                                     },
                                                                     SFC{"Limiter", "Limiter"},
                                                                     SFC{"OutGain", "Output Gain"}
