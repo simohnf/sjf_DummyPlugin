@@ -25,7 +25,6 @@
 
 #include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
-#include <sjf/helpers/sjf_DummyProcessor.h>
 #include <sjf/helpers/sjf_DynamicProcessorSequence.h>
 #include <sjf/helpers/sjf_Gain.h>
 #include <sjf/helpers/sjf_ParameterFactory.h>
@@ -34,6 +33,7 @@
 #include <sjf/processors/sjf_Filter_juce.h>
 #include <sjf/processors/sjf_Limiter_juce.h>
 #include <sjf/processors/sjf_SpectralProcessor.h>
+#include <sjf/processors/sjf_Gate_juce.h>
 
 namespace sjf::plugin_processor_config
 {
@@ -82,8 +82,9 @@ namespace sjf::plugin_processor_config
         using Spread = sjf::helpers::BypassWrapper < sjf::dsp::StereoSpread, Bypass, Mix>;
         using Tremolo = sjf::helpers::BypassWrapper < sjf::dsp::BasicTremolo, Bypass, Mix>;
         using SpectralProc = sjf::helpers::BypassWrapper < sjf::dsp::SpectralProcessor<>, Bypass, Mix>;
+        using Gate = sjf::helpers::BypassWrapper < sjf::dsp::Gate, Bypass, Mix>;
 
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc, Gate>;
 
         using Gain = sjf::helpers::Gain<>;
 
@@ -122,7 +123,8 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Redux", "Redux"},
                                                                         SFC{"Spread", "Spread"},
                                                                         SFC{"Trem", "Tremolo"},
-                                                                        SFC{"Spectral", "Spectral Processor"},
+                                                                        SFC{"Spect", "Spectral Processor"},
+                                                                        SFC{"Gate", "Gate"},
                                                                     },
                                                                     SFC{"Limiter", "Limiter"},
                                                                     SFC{"OutGain", "Output Gain"}
