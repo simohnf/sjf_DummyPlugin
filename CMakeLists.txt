@@ -155,3 +155,31 @@ sjf_add_juce_unit_test_target("DummyPlugin"
 )
 
 add_subdirectory ("modules/pluginval")
+
+# 1. Validate VST3 Bundle
+add_custom_target(DummyPlugin_validate_VST3
+        COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:DummyPlugin_VST3>" --strictness-level 10 --timeout-ms 120000
+        DEPENDS DummyPlugin_VST3 pluginval
+        COMMENT "Validating VST3 bundle with pluginval..."
+)
+
+# 2. Validate AU Bundle
+add_custom_target(DummyPlugin_validate_AU
+        COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:DummyPlugin_AU>" --strictness-level 10 --timeout-ms 120000
+        DEPENDS DummyPlugin_AU pluginval
+        COMMENT "Validating AU bundle with pluginval..."
+)
+
+# 3. Combined Target for CLion
+add_custom_target(DummyPlugin_validate_All
+        DEPENDS DummyPlugin_validate_VST3 DummyPlugin_validate_AU
+        COMMENT "Running pluginval on ALL formats..."
+)
+
+
+# 4. Build all, run unit tests, validate with pluginval
+add_custom_target(DummyPlugin_build_then_validate_All
+        DEPENDS DummyPlugin_Tests DummyPlugin_All DummyPlugin_validate_All
+        COMMAND $<TARGET_FILE:DummyPlugin_Tests>
+        COMMENT "Building all targets, then validating..."
+)
