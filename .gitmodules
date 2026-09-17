@@ -4,3 +4,7 @@
 [submodule "JUCE"]
 	path = JUCE
 	url = git@github.com:juce-framework/JUCE.git
+[submodule "modules/pluginval"]
+	path = modules/pluginval
+	url = git@github.com:Tracktion/pluginval.git
+	branch = develop

@@ -153,3 +153,5 @@ sjf_add_juce_unit_test_target("DummyPlugin"
         FLAGS
             ${FLAGS}
 )
+
+add_subdirectory ("modules/pluginval")
