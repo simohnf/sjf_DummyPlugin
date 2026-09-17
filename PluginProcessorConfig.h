@@ -133,6 +133,50 @@ namespace sjf::plugin_processor_config
             layout.add(std::move(factory));
             return layout;
         }
-
     };
+
+
+    /** Structure used for AudioProcessor Callbacks. Borrowed from juce::AudioProcessor */
+    struct BusProperties
+    {
+        bool isInput;
+        /** The name of the bus */
+        juce::String busName;
+
+        /** The default layout of the bus */
+        juce::AudioChannelSet defaultLayout;
+
+        /** Is this bus activated by default? */
+        bool isActivatedByDefault;
+    };
+
+    static std::vector<BusProperties> getBusProperties() {
+        const static auto buses = std::vector<BusProperties>{
+            {true, "Input",  juce::AudioChannelSet::stereo(), true},
+            {false, "Output",  juce::AudioChannelSet::stereo(), true},
+        };
+        return buses;
+    }
+
+    [[maybe_unused]] static bool isBusesLayoutSupported (const juce::AudioProcessor::BusesLayout& layouts)
+    {
+        #if JucePlugin_IsMidiEffect
+        juce::ignoreUnused (layouts);
+        return true;
+        #else
+
+
+        if (layouts.getMainOutputChannelSet() != getBusProperties()[1].defaultLayout)
+            return false;
+
+        // This checks if the input layout matches the output layout
+        #if ! JucePlugin_IsSynth
+        if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
+            return false;
+        #endif
+
+        return true;
+        #endif
+    }
 }
+

@@ -5,14 +5,13 @@
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
- : AudioProcessor (BusesProperties()
-                 #if ! JucePlugin_IsMidiEffect
-                  #if ! JucePlugin_IsSynth
-                   .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                  #endif
-                   .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                 #endif
-                   )
+ : AudioProcessor ([]() {
+     auto ret = BusesProperties{};
+     for ( auto& bus : sjf::plugin_processor_config::getBusProperties()) {
+        ret.addBus(bus.isInput, bus.busName, bus.defaultLayout, bus.isActivatedByDefault);
+     }
+     return ret;
+ }())
 , params(*this, &undoManager, "Params", sjf::plugin_processor_config::Config::createParameterLayout(processor, groupMetaData))
 {
     sjf::optional_calls::attachToState(processor, params.state);
@@ -79,7 +78,7 @@ void AudioPluginAudioProcessor::setCurrentProgram (int index)
 const juce::String AudioPluginAudioProcessor::getProgramName (int index)
 {
     juce::ignoreUnused (index);
-    return {};
+    return "Default";
 }
 
 void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String& newName)
@@ -90,7 +89,10 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    processor.prepare(juce::dsp::ProcessSpec{sampleRate, static_cast<uint32>(samplesPerBlock), 2});
+
+    const auto numChannels = juce::jmax(getTotalNumInputChannels(), getTotalNumOutputChannels());
+    processSpec = juce::dsp::ProcessSpec{sampleRate, static_cast<uint32>(samplesPerBlock), static_cast<juce::uint32>(numChannels)};
+    callPrepare();
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -101,26 +103,7 @@ void AudioPluginAudioProcessor::releaseResources()
 
 bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-        return false;
-   #endif
-
-    return true;
-  #endif
+    return sjf::plugin_processor_config::isBusesLayoutSupported (layouts);
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
@@ -192,6 +175,28 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     }
 }
 
+void AudioPluginAudioProcessor::numBusesChanged()
+{
+    callPrepare();
+}
+
+void AudioPluginAudioProcessor::numChannelsChanged()
+{
+    callPrepare();
+}
+
+void AudioPluginAudioProcessor::processorLayoutsChanged()
+{
+    callPrepare();
+}
+
+
+void AudioPluginAudioProcessor::callPrepare()
+{
+    const auto numChannels = juce::jmax(getTotalNumInputChannels(), getTotalNumOutputChannels());
+    processSpec.numChannels = static_cast<juce::uint32>(numChannels);
+    processor.prepare(processSpec);
+}
 
 AudioProcessorParameter * AudioPluginAudioProcessor::getBypassParameter() const
 {
