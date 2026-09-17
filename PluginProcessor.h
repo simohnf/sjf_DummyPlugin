@@ -19,6 +19,7 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlockBypassed(AudioBuffer<float> &buffer, MidiBuffer &midiMessages) override;
     using AudioProcessor::processBlock;
 
     //==============================================================================
@@ -44,10 +45,11 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    AudioProcessorParameter* getBypassParameter() const override;
 private:
     //==============================================================================
     UndoManager undoManager;
-    sjf::plugin_processor_config::Config::Processor processor;
+    sjf::helpers::BypassWrapper<sjf::plugin_processor_config::Config::Processor, sjf::helpers::bypass_wrapper_config::Bypass> processor;
     std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata> groupMetaData{nullptr};
     juce::AudioProcessorValueTreeState params;
 

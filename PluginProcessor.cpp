@@ -159,6 +159,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
 }
 
+void AudioPluginAudioProcessor::processBlockBypassed(AudioBuffer<float> &/*buffer*/,
+                                                     MidiBuffer &/*midiMessages*/)
+{
+    jassertfalse;
+}
+
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {
@@ -184,6 +190,37 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
         params.replaceState(loadedTree);
         sjf::optional_calls::attachToState(processor, params.state);
     }
+}
+
+
+AudioProcessorParameter * AudioPluginAudioProcessor::getBypassParameter() const
+{
+    auto topLevelParams = [&]() {
+        auto& tree = getParameterTree();
+        auto subGroups = tree.getSubgroups(false);
+        jassert(subGroups.size() == 1);
+        auto grp = subGroups[0];
+        while (grp && grp->getParameters(false).size() == 0) {
+            auto sub = grp->getSubgroups(false);
+            jassert(sub.size() == 1);
+            grp = sub[0];
+        }
+
+        return grp;
+    }();
+
+    jassert(topLevelParams);
+
+    const auto params_ =  topLevelParams->getParameters(false);
+    jassert(params_.size() >= 1);
+    for (auto param : params_)
+    {
+        if (auto ranged = dynamic_cast<RangedAudioParameter*>(param); ranged->getParameterID().contains("Bypass"))
+            return param;
+    }
+    jassertfalse;
+    return nullptr;
+
 }
 
 //==============================================================================
