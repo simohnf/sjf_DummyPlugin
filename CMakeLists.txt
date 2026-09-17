@@ -14,7 +14,7 @@ cmake_minimum_required(VERSION 3.22)
 # `project()` command. `project()` sets up some helpful variables that describe source/binary
 # directories, and the current project version. This is a standard CMake command.
 
-project(DUMMY_PLUGIN VERSION 0.0.1)
+project(DummyPlugin VERSION 0.0.1)
 
 # 2. ACTIVATE C++20 HERE (Before adding any subdirectories or targets)
 set(CMAKE_CXX_STANDARD 20)
