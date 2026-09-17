@@ -19,6 +19,7 @@ project(DummyPlugin VERSION 0.0.1)
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
 # --- Set Plugin Metadata (Updated by Python script) ---
 set(PLUGIN_CODE "Dumm")
+set(PLUGIN_NAME "Dummy Plugin")
 
 # 2. ACTIVATE C++20 HERE (Before adding any subdirectories or targets)
 set(CMAKE_CXX_STANDARD 20)
@@ -61,7 +62,7 @@ juce_add_plugin(${PROJECT_NAME}
         PLUGIN_CODE ${PLUGIN_CODE}                            # A unique four-character plugin id with exactly one upper-case character
         # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
         FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
-        PRODUCT_NAME "Dummy Plugin"         # The name of the final executable, which can differ from the target name
+        PRODUCT_NAME ${PLUGIN_NAME}         # The name of the final executable, which can differ from the target name
         NEEDS_WEB_BROWSER FALSE                     # Set to TRUE if you need to use webviews
         NEEDS_CURL FALSE)                           # Set to TRUE if you need to use curl
 
@@ -163,7 +164,6 @@ add_subdirectory ("modules/pluginval")
 
 
 
-
 if(APPLE)
     # 1. Validate VST3
     add_custom_target(${PROJECT_NAME}_validate_VST3
@@ -177,8 +177,8 @@ if(APPLE)
     add_custom_target(${PROJECT_NAME}_validate_AU
             # 1. Kill the background registrar so macOS refreshes its AU database
             COMMAND killall -9 AudioComponentRegistrar 2>/dev/null || true
-            # 2. Tell macOS to scan the user components directory directly
-            COMMAND auval -a 2>/dev/null || true
+            # 2. Targeted rescan ONLY for your specific plugin's type, subtype, and manufacturer codes
+            COMMAND auval -v \* ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
             # 3. Run pluginval
             COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000
             DEPENDS ${PROJECT_NAME}_AU pluginval
