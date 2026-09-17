@@ -42,7 +42,7 @@ add_subdirectory(sjf_audio)
 # the formats specified by the FORMATS arguments. This function accepts many optional arguments.
 # Check the readme at `docs/CMake API.md` in the JUCE repo for the full list.
 
-juce_add_plugin(DummyPlugin
+juce_add_plugin(${PROJECT_NAME}
         # VERSION ...                               # Set this if the plugin version is different to the project version
         # ICON_BIG ...                              # ICON_* arguments specify a path to an image file to use as an icon for the Standalone
         # ICON_SMALL ...
@@ -53,7 +53,7 @@ juce_add_plugin(DummyPlugin
         # IS_MIDI_EFFECT TRUE/FALSE                 # Is this plugin a MIDI effect?
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE    # Does the editor need keyboard focus?
         COPY_PLUGIN_AFTER_BUILD TRUE        # Should the plugin be installed to a default location after building?
-        PLUGIN_MANUFACTURER_CODE Juce               # A four-character manufacturer id with at least one upper-case character
+        PLUGIN_MANUFACTURER_CODE SJFA               # A four-character manufacturer id with at least one upper-case character
         PLUGIN_CODE Dumm                            # A unique four-character plugin id with exactly one upper-case character
         # GarageBand 10.3 requires the first letter to be upper-case, and the remaining letters to be lower-case
         FORMATS AU VST3 Standalone                  # The formats to build. Other valid formats are: AAX Unity VST AU AUv3
@@ -67,14 +67,14 @@ juce_add_plugin(DummyPlugin
 # include all your JUCE module headers; if you're happy to include module headers directly, you
 # probably don't need to call this.
 
- juce_generate_juce_header(DummyPlugin)
+juce_generate_juce_header(${PROJECT_NAME})
 
 # `target_sources` adds source files to a target. We pass the target that needs the sources as the
 # first argument, then a visibility parameter for the sources which should normally be PRIVATE.
 # Finally, we supply a list of source files that will be built into the target. This is a standard
 # CMake command.
 
-target_sources(DummyPlugin
+target_sources(${PROJECT_NAME}
         PRIVATE
         PluginEditor.cpp
         PluginProcessor.cpp)
@@ -86,7 +86,7 @@ target_sources(DummyPlugin
 # definitions will be visible both to your code, and also the JUCE module code, so for new
 # definitions, pick unique names that are unlikely to collide! This is a standard CMake command.
 
-target_compile_definitions(DummyPlugin
+target_compile_definitions(${PROJECT_NAME}
         PUBLIC
         # JUCE_WEB_BROWSER and JUCE_USE_CURL would be on by default, but you might not need them.
         JUCE_WEB_BROWSER=0  # If you remove this, add `NEEDS_WEB_BROWSER TRUE` to the `juce_add_plugin` call
@@ -109,7 +109,7 @@ target_compile_definitions(DummyPlugin
 # linked automatically. If we'd generated a binary data target above, we would need to link to it
 # here too. This is a standard CMake command.
 
-target_include_directories(DummyPlugin PRIVATE Source)
+target_include_directories(${PROJECT_NAME} PRIVATE Source)
 
 set(MODULES
         juce::juce_analytics
@@ -137,7 +137,7 @@ set(FLAGS
         juce::juce_recommended_warning_flags
 )
 
-target_link_libraries(DummyPlugin
+target_link_libraries(${PROJECT_NAME}
         PRIVATE
         # AudioPluginData           # If we'd created a binary data target, we'd link to it here
         ${MODULES}
@@ -147,39 +147,63 @@ target_link_libraries(DummyPlugin
 )
 
 include(sjf_audio/sjf_UnitTester/cmake/unit_tester.cmake)
-sjf_add_juce_unit_test_target("DummyPlugin"
+sjf_add_juce_unit_test_target("${PROJECT_NAME}"
         MODULES
-            ${MODULES}
+        ${MODULES}
         FLAGS
-            ${FLAGS}
+        ${FLAGS}
 )
 
 add_subdirectory ("modules/pluginval")
 
-# 1. Validate VST3 Bundle
-add_custom_target(DummyPlugin_validate_VST3
-        COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:DummyPlugin_VST3>" --strictness-level 10 --timeout-ms 120000
-        DEPENDS DummyPlugin_VST3 pluginval
-        COMMENT "Validating VST3 bundle with pluginval..."
-)
 
-# 2. Validate AU Bundle
-add_custom_target(DummyPlugin_validate_AU
-        COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:DummyPlugin_AU>" --strictness-level 10 --timeout-ms 120000
-        DEPENDS DummyPlugin_AU pluginval
-        COMMENT "Validating AU bundle with pluginval..."
-)
+
+
+
+if(APPLE)
+    # 1. Validate VST3
+    add_custom_target(${PROJECT_NAME}_validate_VST3
+            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
+            DEPENDS ${PROJECT_NAME}_VST3 pluginval
+            COMMENT "Validating VST3 bundle with pluginval..."
+            VERBATIM
+    )
+
+    # 2. Validate AU
+    add_custom_target(${PROJECT_NAME}_validate_AU
+            # 1. Kill the background registrar so macOS refreshes its AU database
+            COMMAND killall -9 AudioComponentRegistrar 2>/dev/null || true
+            # 2. Tell macOS to scan the user components directory directly
+            COMMAND auval -a 2>/dev/null || true
+            # 3. Run pluginval
+            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000
+            DEPENDS ${PROJECT_NAME}_AU pluginval
+            COMMENT "Validating AU bundle with pluginval..."
+            VERBATIM
+    )
+    set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3 ${PROJECT_NAME}_validate_AU)
+else()
+    # 1. Validate VST3
+    add_custom_target(${PROJECT_NAME}_validate_VST3
+            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
+            DEPENDS ${PROJECT_NAME}_VST3 pluginval
+            COMMENT "Validating VST3 with pluginval..."
+            VERBATIM
+    )
+    set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3)
+endif()
 
 # 3. Combined Target for CLion
-add_custom_target(DummyPlugin_validate_All
-        DEPENDS DummyPlugin_validate_VST3 DummyPlugin_validate_AU
+add_custom_target(${PROJECT_NAME}_validate_All
+        DEPENDS ${VALIDATE_DEPENDENCIES}
         COMMENT "Running pluginval on ALL formats..."
+        VERBATIM
 )
 
 
 # 4. Build all, run unit tests, validate with pluginval
-add_custom_target(DummyPlugin_build_then_validate_All
-        DEPENDS DummyPlugin_Tests DummyPlugin_All DummyPlugin_validate_All
-        COMMAND $<TARGET_FILE:DummyPlugin_Tests>
+add_custom_target(Build_then_validate_All
+        DEPENDS ${PROJECT_NAME}_Tests ${PROJECT_NAME}_All ${PROJECT_NAME}_validate_All
+        COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
         COMMENT "Building all targets, then validating..."
 )
