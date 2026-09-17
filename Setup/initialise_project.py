@@ -88,7 +88,7 @@ def main():
         content = content.replace("Dummy Plugin", project_name)
         content = content.replace("DummyPlugin", underscores)
         content = content.replace("DUMMY_PLUGIN", all_caps)
-        content = content.replace("PLUGIN_CODE Dumm", "PLUGIN_CODE "+pluginCode)
+        content = content.replace("PLUGIN_CODE \"Dumm\"", "PLUGIN_CODE "+pluginCode)
 
         cmakelists_path.write_text(content, encoding="utf-8")
     else:
