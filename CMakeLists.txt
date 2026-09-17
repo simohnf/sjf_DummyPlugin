@@ -178,7 +178,7 @@ if(APPLE)
             # 1. Kill the background registrar so macOS refreshes its AU database
             COMMAND killall -9 AudioComponentRegistrar 2>/dev/null || true
             # 2. Targeted rescan ONLY for your specific plugin's type, subtype, and manufacturer codes
-            COMMAND auval -v \* ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
+            COMMAND AU_TYPE=$(/usr/libexec/PlistBuddy -c "Print :AudioComponents:0:type" "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component/Contents/Info.plist") && auval -v $AU_TYPE ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
             # 3. Run pluginval
             COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000
             DEPENDS ${PROJECT_NAME}_AU pluginval
