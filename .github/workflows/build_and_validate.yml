@@ -1,0 +1,128 @@
+# Full build:
+#   - builds plugin in release
+#   - runs unit tests
+#   - builds pluginval
+#   - runs pluginval tests
+#   - uploads artefacts
+#   Runs on Mac, Windows, and Linux
+
+
+
+name: Build and Validate
+
+env:
+    PROJECT_NAME: DummyPlugin
+
+on:
+    push:
+        branches: ["main"]
+
+jobs:
+    build:
+        name: Build & Validate (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [macos-latest, windows-latest, ubuntu-latest]
+
+        steps:
+            # 1. Check out the repository
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            # 2. Install Linux audio dependencies
+            - name: Install Linux Dependencies
+              if: runner.os == 'Linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y \
+                    libasound2-dev \
+                    libjack-jackd2-dev \
+                    ladspa-sdk \
+                    freeglut3-dev \
+                    g++ \
+                    libfreetype6-dev \
+                    libfontconfig1-dev \
+                    libcurl4-openssl-dev \
+                    libgl1-mesa-dev \
+                    libglu1-mesa-dev \
+                    libx11-dev \
+                    libxcomposite-dev \
+                    libxcursor-dev \
+                    libxinerama-dev \
+                    libxrandr-dev \
+                    libxrender-dev \
+                    libsysfs-dev \
+                    libxkbcommon-dev \
+                    xvfb
+
+            # 3. Setup Caching
+
+            # A) Mac & Linux: ccache
+            - name: Setup ccache (macOS & Linux)
+              if: runner.os != 'Windows'
+              uses: Chocobo1/setup-ccache-action@v1
+              with:
+                  preset: 'cmake'
+
+            # B) Windows: Preserve build directory across workflow runs
+            - name: Cache Build Directory (Windows)
+              if: runner.os == 'Windows'
+              uses: actions/cache@v4
+              with:
+                  path: build
+                  key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', '**/*.h', '**/*.cpp') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cmake-
+
+            # 4. Configure CMake (Platform-Specific)
+            - name: Configure CMake (macOS)
+              if: runner.os == 'macOS'
+              run: |
+                  cmake -B build \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+                    -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64"
+
+            - name: Configure CMake (Linux)
+              if: runner.os == 'Linux'
+              run: |
+                  cmake -B build \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+                    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+            - name: Configure CMake (Windows)
+              if: runner.os == 'Windows'
+              run: |
+                  cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+            # 5. Build, Test, and Validate
+            - name: Build All Targets
+              run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_All
+
+            - name: Run Unit Tests
+              run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Tests
+
+            - name: Build pluginval
+              run: cmake --build build --config Release --target pluginval
+
+            - name: Run Pluginval Validation
+              run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
+
+            # 6. Upload compiled plugin binaries as build artefacts
+            - name: Upload Plugin Artefacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ runner.os }}-plugin-builds
+                  path: |
+                      build/*_artefacts/**/*.vst3
+                      build/*_artefacts/**/*.component
+                      build/*_artefacts/**/*.app
+                      build/*_artefacts/**/*.exe
+                      build/*_artefacts/**/Release/Standalone/*
+                  retention-days: 7
