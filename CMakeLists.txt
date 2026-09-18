@@ -161,7 +161,16 @@ sjf_add_juce_unit_test_target("${PROJECT_NAME}"
 
 add_subdirectory ("modules/pluginval")
 
-
+if(MSVC)
+    # 1. Force pluginval's third-party dependencies back to C++17
+    # (This natively removes char8_t without needing /Zc:char8_t-)
+    foreach(vst3_target validator sdk_hosting base pluginterfaces sdk_common)
+        if(TARGET ${vst3_target})
+            set_property(TARGET ${vst3_target} PROPERTY CXX_STANDARD 17)
+            target_compile_definitions(${vst3_target} PRIVATE _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING)
+        endif()
+    endforeach()
+endif()
 
 
 if(APPLE)
@@ -187,13 +196,23 @@ if(APPLE)
     )
     set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3 ${PROJECT_NAME}_validate_AU)
 else()
-    # 1. Validate VST3
-    add_custom_target(${PROJECT_NAME}_validate_VST3
-            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
-            DEPENDS ${PROJECT_NAME}_VST3 pluginval
-            COMMENT "Validating VST3 with pluginval..."
-            VERBATIM
-    )
+    # 1. Validate VST3 (Linux & Windows)
+    # Target the system-installed VST3 bundle directory copied by COPY_PLUGIN_AFTER_BUILD
+    if(UNIX AND NOT APPLE)
+        add_custom_target(${PROJECT_NAME}_validate_VST3
+                COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3" --strictness-level 10 --timeout-ms 120000
+                DEPENDS ${PROJECT_NAME}_VST3 pluginval
+                COMMENT "Validating installed VST3 bundle with pluginval..."
+                VERBATIM
+        )
+    else()
+        add_custom_target(${PROJECT_NAME}_validate_VST3
+                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
+                DEPENDS ${PROJECT_NAME}_VST3 pluginval
+                COMMENT "Validating VST3 with pluginval..."
+                VERBATIM
+        )
+    endif()
     set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3)
 endif()
 
@@ -210,4 +229,5 @@ add_custom_target(Build_then_validate_All
         DEPENDS ${PROJECT_NAME}_Tests ${PROJECT_NAME}_All ${PROJECT_NAME}_validate_All
         COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
         COMMENT "Building all targets, then validating..."
+        VERBATIM
 )
