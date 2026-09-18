@@ -1,13 +1,4 @@
-# Example Audio Plugin CMakeLists.txt
-
-# To get started on a new plugin, copy this entire folder (containing this file and C++ sources) to
-# a convenient location, and then start making modifications.
-
-# The first line of any CMake project should be a call to `cmake_minimum_required`, which checks
-# that the installed CMake will be able to understand the following CMakeLists, and ensures that
-# CMake's behaviour is compatible with the named version. This is a standard CMake command, so more
-# information can be found in the CMake docs.
-
+# SJF Audio Audio Plugin CMakeLists.txt
 cmake_minimum_required(VERSION 3.22)
 
 # The top-level CMakeLists.txt file for a project must contain a literal, direct call to the
@@ -26,14 +17,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# If you've installed JUCE somehow (via a package manager, or directly using the CMake install
-# target), you'll need to tell this project that it depends on the installed copy of JUCE. If you've
-# included JUCE directly in your source tree (perhaps as a submodule), you'll need to tell CMake to
-# include that subdirectory as part of the build.
 
-# find_package(JUCE CONFIG REQUIRED)        # If you've installed JUCE to your system
-# or
-add_subdirectory(JUCE)                    # If you've put JUCE in a subdirectory called JUCE
+add_subdirectory(JUCE)                    #
 add_subdirectory(sjf_audio)
 
 # If you are building a VST2, CMake needs to be told where to find the SDK on your
@@ -194,8 +179,8 @@ if(APPLE)
             COMMENT "Validating AU bundle with pluginval..."
             VERBATIM
     )
-else ()
     set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3 ${PROJECT_NAME}_validate_AU)
+else ()
     # 1. Validate VST3 (Linux & Windows)
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
