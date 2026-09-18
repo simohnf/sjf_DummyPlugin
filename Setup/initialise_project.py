@@ -14,8 +14,25 @@ def run_git(args, cwd):
     except subprocess.CalledProcessError as e:
         print(f"Git warning/notice ({' '.join(args)}): {e.stderr.strip()}")
 
-def makeCode(str):
-    name = str
+def setup_git_repo(target_dir):
+    print("Initializing fresh Git history...")
+    run_git(["checkout", "--orphan", "fresh-start"], cwd=target_dir)
+    run_git(["add", "-A"], cwd=target_dir)
+    run_git(["commit", "-m", "Initial commit"], cwd=target_dir)
+    run_git(["branch", "-M", "main"], cwd=target_dir)
+
+    # Submodules check
+    if (target_dir / ".gitmodules").exists():
+        print("Updating submodules...")
+        run_git(["submodule", "update", "--init", "--recursive"], cwd=target_dir)
+
+    # Clean up remotes and history
+    run_git(["remote", "remove", "origin"], cwd=target_dir)
+    run_git(["reflog", "expire", "--expire=now", "--all"], cwd=target_dir)
+    run_git(["gc", "--prune=now", "--aggressive"], cwd=target_dir)
+
+def make_code(input_str):
+    name = input_str
     words = name.split()
     ret = ""
     w = 0
@@ -46,6 +63,28 @@ def makeCode(str):
 
     return ret
 
+def replace_old_names_in_file(filepath, project_name):
+    if filepath.exists():
+        content = filepath.read_text(encoding="utf-8")
+        underscores = project_name.replace(" ", "_")
+        all_caps = underscores.upper()
+        pluginCode = make_code(project_name)
+
+        # Replacements (order-safe)
+        content = content.replace("Dummy Plugin", project_name)
+        content = content.replace("DummyPlugin", underscores)
+        content = content.replace("DUMMY_PLUGIN", all_caps)
+        content = content.replace('PLUGIN_CODE "Dumm"', f'PLUGIN_CODE "{pluginCode}"')
+        filepath.write_text(content, encoding="utf-8")
+    else:
+        print(f"Warning: {filepath} not found. Skipping text replacement.")
+
+def reset_version_hints(template_dir):
+    version_hints_path = template_dir / "Source" / "VersionHints.h"
+    version_hints_path.parent.mkdir(parents=True, exist_ok=True)
+    version_hints_path.write_text(VERSION_HINTS_TEMPLATE, encoding="utf-8")
+    print("Reset Source/VersionHints.h for the new project.")
+
 def main():
     repo_root = Path.cwd()
     template_dir = repo_root / "sjf_DummyPlugin"
@@ -68,8 +107,6 @@ def main():
 
     # 3. String transformations
     underscores = project_name.replace(" ", "_")
-    all_caps = underscores.upper()
-    pluginCode = makeCode(project_name)
 
     target_dir = repo_root / underscores
 
@@ -79,46 +116,18 @@ def main():
 
     print(f"\nCreating new project: {project_name} ({underscores})...")
 
-    # 4. Perform replacements in CMakeLists.txt
-    cmakelists_path = template_dir / "CMakeLists.txt"
-    if cmakelists_path.exists():
-        content = cmakelists_path.read_text(encoding="utf-8")
-
-        # Replacements (order-safe)
-        content = content.replace("Dummy Plugin", project_name)
-        content = content.replace("DummyPlugin", underscores)
-        content = content.replace("DUMMY_PLUGIN", all_caps)
-        content = content.replace("PLUGIN_CODE \"Dumm\"", "PLUGIN_CODE "+pluginCode)
-
-        cmakelists_path.write_text(content, encoding="utf-8")
-    else:
-        print(f"Warning: {cmakelists_path} not found. Skipping text replacement.")
-
-    version_hints_path = template_dir / "Source" / "VersionHints.h"
-    version_hints_path.parent.mkdir(parents=True, exist_ok=True)
-
-    version_hints_path.write_text(VERSION_HINTS_TEMPLATE, encoding="utf-8")
-    print("Reset Source/VersionHints.h for the new project.")
-
-    # 5. Rename directory
     template_dir.rename(target_dir)
 
-    # 6. Reset Git history
-    print("Initializing fresh Git history...")
-    run_git(["checkout", "--orphan", "fresh-start"], cwd=target_dir)
-    run_git(["add", "-A"], cwd=target_dir)
-    run_git(["commit", "-m", "Initial commit"], cwd=target_dir)
-    run_git(["branch", "-M", "main"], cwd=target_dir)
 
-    # Submodules check
-    if (target_dir / ".gitmodules").exists():
-        print("Updating submodules...")
-        run_git(["submodule", "update", "--init", "--recursive"], cwd=target_dir)
+    replace_old_names_in_file(target_dir / "CMakeLists.txt", project_name)
 
-    # Clean up remotes and history
-    run_git(["remote", "remove", "origin"], cwd=target_dir)
-    run_git(["reflog", "expire", "--expire=now", "--all"], cwd=target_dir)
-    run_git(["gc", "--prune=now", "--aggressive"], cwd=target_dir)
+    replace_old_names_in_file(target_dir / ".github/workflows/build_and_validate.yml", project_name)
+    replace_old_names_in_file(target_dir / ".github/workflows/quick_validation.yml", project_name)
+
+    reset_version_hints(target_dir)
+
+
+    setup_git_repo(target_dir)
 
     print(f"\nSuccess! Project created at: {target_dir}")
 
