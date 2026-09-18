@@ -194,15 +194,14 @@ if(APPLE)
             COMMENT "Validating AU bundle with pluginval..."
             VERBATIM
     )
+else ()
     set(VALIDATE_DEPENDENCIES ${PROJECT_NAME}_validate_VST3 ${PROJECT_NAME}_validate_AU)
-else()
     # 1. Validate VST3 (Linux & Windows)
-    # Target the system-installed VST3 bundle directory copied by COPY_PLUGIN_AFTER_BUILD
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3" --strictness-level 10 --timeout-ms 120000
+                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000"
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
-                COMMENT "Validating installed VST3 bundle with pluginval..."
+                COMMENT "Validating installed VST3 bundle with pluginval under Xvfb..."
                 VERBATIM
         )
     else()
