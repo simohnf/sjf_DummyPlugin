@@ -215,3 +215,25 @@ add_custom_target(Build_then_validate_All
         COMMENT "Building all targets, then validating..."
         VERBATIM
 )
+
+if(APPLE)
+    # Find Python 3 installed on the system
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    # Custom target to invoke installer_mac.py
+    add_custom_target(${PROJECT_NAME}_create_installer
+            COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_mac.py"
+                --name "${PLUGIN_NAME}"
+                --version "${PROJECT_VERSION}"
+                --manufacturer "${PLUGIN_MANUFACTURER_CODE}"
+                --plugin-code "${PLUGIN_CODE}"
+                --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+                --vst3-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>"
+                --au-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_AU>"
+                --stand-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_Standalone>"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+            DEPENDS ${PROJECT_NAME}_All
+            COMMENT "Generating macOS installer package (.pkg)..."
+            VERBATIM
+    )
+endif()
