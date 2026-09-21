@@ -144,6 +144,13 @@ sjf_add_juce_unit_test_target("${PROJECT_NAME}"
         ${FLAGS}
 )
 
+
+
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+
 add_subdirectory ("modules/pluginval")
 
 if(MSVC)
@@ -209,13 +216,73 @@ add_custom_target(${PROJECT_NAME}_validate_All
 
 
 # 4. Build all, run unit tests, validate with pluginval
-add_custom_target(Build_then_validate_All
+add_custom_target(${PROJECT_NAME}_Build_then_validate_All
         DEPENDS ${PROJECT_NAME}_Tests ${PROJECT_NAME}_All ${PROJECT_NAME}_validate_All
         COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
         COMMENT "Building all targets, then validating..."
         VERBATIM
 )
 
+
+
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+
+# 5. Sanitised validation
+# ------------------------------------------------------------------------------
+# Sanitizer Configuration Option
+# ------------------------------------------------------------------------------
+option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+if(ENABLE_SANITIZERS)
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+    else()
+        # macOS / Clang / GCC
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    endif()
+endif()
+
+
+# ------------------------------------------------------------------------------
+# 2. Sanitized Validation Target
+# ------------------------------------------------------------------------------
+if(NOT ENABLE_SANITIZERS)
+    add_custom_target(${PROJECT_NAME}_Validate_Sanitised
+            # 1. Configure the isolated build-san folder
+            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-san"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}"
+            -DCMAKE_BUILD_TYPE=$<CONFIG>
+            -DENABLE_SANITIZERS=ON
+
+            # 2. Build and run Unit Tests (Sanitized)
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
+            --config $<CONFIG>
+            --target ${PROJECT_NAME}_Tests
+            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
+
+            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
+            --config $<CONFIG>
+            --target ${PROJECT_NAME}_validate_All
+
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Running sanitized unit tests and pluginval validation..."
+            USES_TERMINAL
+            VERBATIM
+    )
+endif()
+
+
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+#===============#===============#===============#===============#===============
+
+# Installer target: build all, run all tests (no sanitisers), build installer package
 if(APPLE)
     # Find Python 3 installed on the system
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
