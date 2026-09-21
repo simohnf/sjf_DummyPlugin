@@ -7,6 +7,28 @@ import sys
 from pathlib import Path
 
 
+def create_clean_script(scripts_dir: Path, vst3_name: str, au_name: str, stand_name: str, mfg_code: str):
+    """Creates an executable script to remove previous installations."""
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    clean_old_path = scripts_dir / "preinstall"
+
+    script_content = f"""#!/bin/sh
+# remove previous installations
+rm -rf "/Library/Audio/Plug-Ins/VST3/{vst3_name}"
+pkgutil --forget "com.{mfg_code}.pkg.vst3" 2>/dev/null || true
+
+rm -rf "/Library/Audio/Plug-Ins/Components/{au_name}"
+pkgutil --forget "com.{mfg_code}.pkg.au" 2>/dev/null || true
+
+rm -rf "/Applications/{stand_name}"
+pkgutil --forget "com.{mfg_code}.pkg.standalone" 2>/dev/null || true
+
+exit 0
+"""
+    clean_old_path.write_text(script_content, encoding="utf-8")
+    clean_old_path.chmod(clean_old_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return scripts_dir
+
 def create_postinstall_script(scripts_dir: Path, vst3_name: str, au_name: str, stand_name: str):
     """Creates an executable postinstall script to strip quarantine flags."""
     scripts_dir.mkdir(parents=True, exist_ok=True)
@@ -24,6 +46,18 @@ exit 0
     postinstall_path.chmod(postinstall_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return scripts_dir
 
+def run_clean_pkgbuild(identifier: str, version: str, output_pkg: Path, clean_scripts_dir: Path):
+    """Builds a payload-free script package using --nopayload."""
+    cmd = [
+        "pkgbuild",
+        "--nopayload",
+        "--scripts", str(clean_scripts_dir),
+        "--identifier", identifier,
+        "--version", version,
+        str(output_pkg)
+    ]
+    print(f"Building clean component package: {output_pkg.name}...", flush=True)
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
 
 def create_distribution_xml(xml_path: Path, project_name: str, version: str, mfg_code: str):
     """Generates a Distribution.xml file for productbuild."""
@@ -33,10 +67,18 @@ def create_distribution_xml(xml_path: Path, project_name: str, version: str, mfg
     <options customize="always" require-scripts="false"/>
     
     <choices-outline>
+        <line choice="choice_clean"/>
         <line choice="choice_vst3"/>
         <line choice="choice_au"/>
         <line choice="choice_standalone"/>
     </choices-outline>
+    
+    <choice id="choice_clean" 
+            title="Remove previous Versions" 
+            description="Deletes old installations and clears receipt logs before installing."
+            selected="true"> 
+        <pkg-ref id="com.{mfg_code}.pkg.clean"/>
+    </choice>
 
     <choice id="choice_vst3" title="{project_name} VST3 Plugin">
         <pkg-ref id="com.{mfg_code}.pkg.vst3"/>
@@ -50,6 +92,7 @@ def create_distribution_xml(xml_path: Path, project_name: str, version: str, mfg
         <pkg-ref id="com.{mfg_code}.pkg.standalone"/>
     </choice>
 
+    <pkg-ref id="com.{mfg_code}.pkg.clean" version="1.0.0">{project_name}_clean.pkg</pkg-ref>
     <pkg-ref id="com.{mfg_code}.pkg.vst3" version="{version}">{project_name}_vst3.pkg</pkg-ref>
     <pkg-ref id="com.{mfg_code}.pkg.au" version="{version}">{project_name}_au.pkg</pkg-ref>
     <pkg-ref id="com.{mfg_code}.pkg.standalone" version="{version}">{project_name}_standalone.pkg</pkg-ref>
@@ -105,7 +148,6 @@ def run_productbuild(dist_xml: Path, package_dir: Path, output_installer: Path):
         print(f"Error running productbuild:\n{e.stderr}", flush=True)
         sys.exit(1)
 
-
 def main():
     print("\n******************\n******************\n******************\n******************\n")
     parser = argparse.ArgumentParser(description="Build macOS .pkg installer for Audio Plugins")
@@ -134,6 +176,17 @@ def main():
     stand_name = Path(args.stand_path).name if args.stand_path else ""
 
     create_postinstall_script(scripts_dir, vst3_name, au_name, stand_name)
+
+    # 0. Build Payload-Free Clean Package
+    clean_scripts_dir = pkg_working_dir / "clean_scripts"
+    create_clean_script(clean_scripts_dir, vst3_name, au_name, stand_name, mfg)
+
+    run_clean_pkgbuild(
+        identifier=f"com.{mfg}.pkg.clean",
+        version=args.version,
+        output_pkg=pkg_working_dir / f"{args.name}_clean.pkg",
+        clean_scripts_dir=clean_scripts_dir
+    )
 
     # 1. Build VST3 Component Package
     run_pkgbuild(
