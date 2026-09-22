@@ -34,6 +34,7 @@
 #include <sjf/processors/sjf_Limiter_juce.h>
 #include <sjf/processors/sjf_SpectralProcessor.h>
 #include <sjf/processors/sjf_Gate_juce.h>
+#include <sjf/processors/sjf_Phaser.h>
 
 namespace sjf::plugin_processor_config
 {
@@ -76,6 +77,7 @@ namespace sjf::plugin_processor_config
         using Comp = sjf::helpers::BypassWrapper <sjf::dsp::Compressor,Bypass, Mix>;
         using Chorus = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Chorus,Bypass, Mix, DefaultMixLevel<50.0f>>;
         using Flanger = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::Flanger,Bypass, Mix, DefaultMixLevel<50.0f>>;
+        using Phaser = sjf::helpers::BypassWrapper <sjf::dsp::modulation_effects::BasicPhaser,Bypass, Mix, DefaultMixLevel<50.0f>>;
         using Exciter = sjf::helpers::BypassWrapper <sjf::helpers::GainWrapper<sjf::dsp::Exciter, true, false>,Bypass, Mix>;
         using Utility = sjf::helpers::BypassWrapper < sjf::dsp::LiveUtility, Bypass, Mix>;
         using Redux = sjf::helpers::BypassWrapper < sjf::dsp::Redux, Bypass, Mix>;
@@ -84,7 +86,7 @@ namespace sjf::plugin_processor_config
         using SpectralProc = sjf::helpers::BypassWrapper < sjf::dsp::SpectralProcessor<>, Bypass, Mix>;
         using Gate = sjf::helpers::BypassWrapper < sjf::dsp::Gate, Bypass, Mix>;
 
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc, Gate>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Phaser, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc, Gate>;
 
         using Gain = sjf::helpers::Gain<>;
 
@@ -118,6 +120,7 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Filt2", "Filter"},
                                                                         SFC{"Chor", "Chorus"},
                                                                         SFC{"Flan", "Flanger"},
+                                                                        SFC{"Phas", "Phaser"},
                                                                         SFC{"Air", "Exciter"},
                                                                         SFC{"Util", "Utility"},
                                                                         SFC{"Redux", "Redux"},
