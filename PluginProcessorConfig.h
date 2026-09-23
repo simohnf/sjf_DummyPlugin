@@ -35,6 +35,7 @@
 #include <sjf/processors/sjf_SpectralProcessor.h>
 #include <sjf/processors/sjf_Gate_juce.h>
 #include <sjf/processors/sjf_Phaser.h>
+#include <sjf/processors/sjf_Ladder_juce.h>
 
 namespace sjf::plugin_processor_config
 {
@@ -85,8 +86,9 @@ namespace sjf::plugin_processor_config
         using Tremolo = sjf::helpers::BypassWrapper < sjf::dsp::BasicTremolo, Bypass, Mix>;
         using SpectralProc = sjf::helpers::BypassWrapper < sjf::dsp::SpectralProcessor<>, Bypass, Mix>;
         using Gate = sjf::helpers::BypassWrapper < sjf::dsp::Gate, Bypass, Mix>;
+        using Ladder = sjf::helpers::BypassWrapper < sjf::dsp::LadderFilter, Bypass, Mix>;
 
-        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Chorus, Flanger, Phaser, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc, Gate>;
+        using Sequence = sjf::helpers::DynamicProcessorSequence<Sat, Del, Rev, Comp, Fil, Fil, Ladder, Chorus, Flanger, Phaser, Exciter, Utility, Redux, Spread, Tremolo, SpectralProc, Gate>;
 
         using Gain = sjf::helpers::Gain<>;
 
@@ -118,6 +120,7 @@ namespace sjf::plugin_processor_config
                                                                         SFC{"Comp", "Compressor"},
                                                                         SFC{"Filt1", "Filter"},
                                                                         SFC{"Filt2", "Filter"},
+                                                                        SFC{"Ladd", "Ladder Filter"},
                                                                         SFC{"Chor", "Chorus"},
                                                                         SFC{"Flan", "Flanger"},
                                                                         SFC{"Phas", "Phaser"},
