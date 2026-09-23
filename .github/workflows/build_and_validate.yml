@@ -16,6 +16,10 @@ env:
 on:
     push:
         branches: ["main"]
+        tags: ["v*"] # uses versions to handle releases
+
+permissions:
+    contents: write
 
 jobs:
     build:
@@ -114,15 +118,53 @@ jobs:
             -   name: Run Pluginval Validation
                 run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
 
-            # 6. Upload compiled plugin binaries as build artefacts
-            -   name: Upload Plugin Artefacts
+            -   name: Build macOS installer
+                if: runner.os == 'macOS'
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_create_installer
+
+            # 6a. Upload Plugin Artefacts (Windows & Linux)
+            -   name: Upload Plugin Artefacts (Windows & Linux)
+                if: runner.os != 'macOS'
                 uses: actions/upload-artifact@v4
                 with:
                     name: ${{ runner.os }}-plugin-builds
                     path: |
                         build/*_artefacts/**/*.vst3
-                        build/*_artefacts/**/*.component
-                        build/*_artefacts/**/*.app
                         build/*_artefacts/**/*.exe
                         build/*_artefacts/**/Release/Standalone/*
                     retention-days: 7
+
+            # 6b. Upload Plugin Artefacts (macOS - .pkg only)
+            -   name: Upload Plugin Artefacts (macOS)
+                if: runner.os == 'macOS'
+                uses: actions/upload-artifact@v4
+                with:
+                    name: ${{ runner.os }}-plugin-builds
+                    path: build/**/*.pkg
+                    retention-days: 7
+
+            # 7. Prepare assets for GitHub Release
+            -   name: Prepare Release Assets
+                if: startsWith(github.ref, 'refs/tags/')
+                shell: bash
+                run: |
+                    mkdir -p release_assets
+                    if [ "${{ runner.os }}" = "macOS" ]; then
+                      # Move .pkg directly to release assets (no double zipping needed)
+                      find build -name "*.pkg" -exec cp {} release_assets/ \;
+                    else
+                      # Zip non-macOS binaries (.vst3, .exe, etc.)
+                      find build/*_artefacts -maxdepth 4 \( -name "*.vst3" -o -name "*.component" -o -name "*.app" -o -name "*.exe" \) | while read -r plugin; do
+                        base_name=$(basename "$plugin")
+                        7z a "release_assets/${base_name}_${{ runner.os }}.zip" "$plugin"
+                      done
+                    fi
+
+            # 8. Upload ZIP files to GitHub Release
+            -   name: Upload Plugin Binaries to Release
+                if: startsWith(github.ref, 'refs/tags/')
+                uses: softprops/action-gh-release@v2
+                with:
+                    files: release_assets/*.zip
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
