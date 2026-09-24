@@ -56,7 +56,7 @@ private:
     sjf::helpers::BypassWrapper<sjf::plugin_processor_config::Config::Processor, sjf::helpers::bypass_wrapper_config::Bypass> processor;
     std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata> groupMetaData{nullptr};
     juce::AudioProcessorValueTreeState params;
-    juce::dsp::ProcessSpec processSpec;
+    juce::dsp::ProcessSpec processSpec{};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
