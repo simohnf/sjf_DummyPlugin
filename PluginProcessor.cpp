@@ -14,6 +14,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
  }())
 , params(*this, &undoManager, "Params", sjf::plugin_processor_config::Config::createParameterLayout(processor, groupMetaData))
 {
+    sjf::helpers::PresetManager::initAPVTS(params.state, params.processor.getParameterTree(), groupMetaData.get());
+
     sjf::optional_calls::attachToState(processor, params.state);
 }
 
@@ -170,6 +172,7 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
 {
     if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
     {
+        sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
         params.replaceState(loadedTree);
         sjf::optional_calls::attachToState(processor, params.state);
     }
