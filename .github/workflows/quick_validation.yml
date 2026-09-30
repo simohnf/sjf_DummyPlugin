@@ -19,7 +19,7 @@ on:
 
 jobs:
     build:
-        name: Build & Validate (${{ matrix.os }})
+        name: Quick Validation (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
 
         strategy:
