@@ -46,6 +46,7 @@ jobs:
                         ladspa-sdk \
                         freeglut3-dev \
                         g++ \
+                        gdb \
                         libfreetype6-dev \
                         libfontconfig1-dev \
                         libcurl4-openssl-dev \
@@ -106,10 +107,18 @@ jobs:
 
             # 5. Build, Test, and Validate a sanitised version
             -   name: Run Unit Tests
-                run: cmake --build build --config Debug --target ${{ env.PROJECT_NAME }}_Tests
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Tests
 
             -   name: Build pluginval
-                run: cmake --build build --config Debug --target pluginval
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_All pluginval
 
             -   name: Run Pluginval Validation
-                run: cmake --build build --config Debug --target ${{ env.PROJECT_NAME }}_validate_All
+                run: |
+                    xvfb-run -a gdb -batch \
+                      -ex "run" \
+                      -ex "bt full" \
+                      -ex "thread apply all bt" \
+                      --args ./build/modules/pluginval/pluginval_artefacts/Release/pluginval \
+                        --validate "./build/${{ env.PROJECT_NAME }}_artefacts/Release/VST3/${{ env.PROJECT_NAME }}.vst3" \
+                        --strictness-level 10 \
+                        --timeout-ms 120000
