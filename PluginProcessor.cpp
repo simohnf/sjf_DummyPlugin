@@ -16,7 +16,9 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 {
     sjf::helpers::PresetManager::initAPVTS(params.state, params.processor.getParameterTree(), groupMetaData.get());
 
+    processor.getProcessor().getProcessor().get<0>().attachAPVTS(params);
     sjf::optional_calls::attachToState(processor, params.state);
+
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -158,7 +160,7 @@ bool AudioPluginAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 {
-    return new sjf::generic_editor::GenericEditor (params, *this, *groupMetaData, &undoManager);
+    return sjf::plugin_processor_config::Config::getEditor(params, *this, *groupMetaData, &undoManager, processor.getProcessor().getProcessor().get<0>());
     // return new AudioPluginAudioProcessorEditor (*this);
 }
 

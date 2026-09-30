@@ -11,6 +11,10 @@
 //
 #pragma once
 
+#include "sjf/dsp/sjf_ModulatorLFO.h"
+#include "sjf/widgets/sjf_GenericEditor.h"
+
+#include <sjf/helpers/Utility/sjf_GainWrapper.h>
 #include <sjf/helpers/sjf_OversamplingWrapper.h>
 #include <sjf/processors/Reverbs/sjf_ReverbPlayground.h>
 #include <sjf/processors/Waveshaper/sjf_Waveshaper.h>
@@ -18,10 +22,9 @@
 #include <sjf/processors/sjf_Delay.h>
 #include <sjf/processors/sjf_Exciter.h>
 #include <sjf/processors/sjf_Redux.h>
+#include <sjf/processors/sjf_StereoSpread.h>
 #include <sjf/processors/sjf_Tremolo.h>
 #include <sjf/processors/sjf_Utility.h>
-#include <sjf/processors/sjf_StereoSpread.h>
-#include <sjf/helpers/Utility/sjf_GainWrapper.h>
 
 #include <sjf/helpers/sjf_BypassWrapper.h>
 #include <sjf/helpers/sjf_ChunkedWrapper.h>
@@ -36,6 +39,8 @@
 #include <sjf/processors/sjf_Gate_juce.h>
 #include <sjf/processors/sjf_Phaser.h>
 #include <sjf/processors/sjf_Ladder_juce.h>
+
+#include <sjf/widgets/sjf_ModulationManager.h>
 
 namespace sjf::plugin_processor_config
 {
@@ -99,8 +104,13 @@ namespace sjf::plugin_processor_config
 
         using Limit = sjf::helpers::BypassWrapper <sjf::dsp::Limiter,Bypass>;
 
+
+        using ModLFO = sjf::dsp::modulation::BasicLFO;
+
+        using ModChain = sjf::dsp::modulation::ModulationSystem<ModLFO, ModLFO, ModLFO, ModLFO, ModLFO>;
+
         // Simply change this alias target to swap out the active core engine
-        using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<Gain, Seq, Limit, Gain> >;
+        using Processor = sjf::helpers::ChunkedWrapper  < sjf::helpers::ProcessorSequence<ModChain, Gain, Seq, Limit, Gain> >;
 
         template<typename Processor>
         static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout(Processor& processor, std::unique_ptr<sjf::helpers::ParameterFactory::GroupMetadata>& groupMetadata) {
@@ -111,6 +121,14 @@ namespace sjf::plugin_processor_config
 
 
             auto factory = processor.createParameters   ("FX", "FX",
+                                                                    NestedConfig{
+                                                                        "Mods", "Modulators",
+                                                                        SFC{"LFO1", "LFO 1"},
+                                                                        SFC{"LFO2", "LFO 2"},
+                                                                        SFC{"LFO3", "LFO 3"},
+                                                                        SFC{"LFO4", "LFO 4"},
+                                                                        SFC{"LFO5", "LFO 5"},
+                                                                        },
                                                                     SFC{"InGain", "Input Gain"},
                                                                     NestedConfig{
                                                                         "Chain", "Chain",
@@ -138,6 +156,12 @@ namespace sjf::plugin_processor_config
             groupMetadata = std::make_unique<sjf::helpers::ParameterFactory::GroupMetadata>( helpers::ParameterFactory::createMetadataTree(*factory));
             layout.add(std::move(factory));
             return layout;
+        }
+
+        static juce::AudioProcessorEditor* getEditor(juce::AudioProcessorValueTreeState& apvts, juce::AudioProcessor& processor, const helpers::ParameterFactory::GroupMetadata& metaData, UndoManager* undoManager, ModChain& modChain)
+        {
+
+            return new sjf::gui::modulation::GenericEditorWithModulation(apvts, processor, metaData, modChain, undoManager);
         }
     };
 

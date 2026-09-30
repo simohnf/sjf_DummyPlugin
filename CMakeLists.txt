@@ -119,6 +119,7 @@ set(MODULES
         sjf_helpers
         sjf_dsp
         sjf_gui
+        sjf_modulation
 )
 
 set(FLAGS
@@ -246,6 +247,12 @@ if(ENABLE_SANITIZERS)
     endif()
 endif()
 
+option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
+
+if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
+        add_compile_options(/fsanitize=thread)
+endif()
+
 
 # ------------------------------------------------------------------------------
 # 2. Sanitized Validation Target
@@ -271,6 +278,32 @@ if(NOT ENABLE_SANITIZERS)
 
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
             COMMENT "Running sanitized unit tests and pluginval validation..."
+            USES_TERMINAL
+            VERBATIM
+    )
+endif()
+
+if(NOT ENABLE_TSAN)
+    add_custom_target(${PROJECT_NAME}_Validate_Thread_Sanitised
+            # 1. Configure the isolated build-san folder
+            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-tsan"
+            -S "${CMAKE_CURRENT_SOURCE_DIR}"
+            -DCMAKE_BUILD_TYPE=$<CONFIG>
+            -DENABLE_TSAN=ON
+
+            # 2. Build and run Unit Tests (Sanitized)
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
+            --config $<CONFIG>
+            --target ${PROJECT_NAME}_Tests
+            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
+
+            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
+            --config $<CONFIG>
+            --target ${PROJECT_NAME}_validate_All
+
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Running thread sanitized unit tests and pluginval validation..."
             USES_TERMINAL
             VERBATIM
     )
