@@ -119,6 +119,6 @@ jobs:
                       -ex "bt full" \
                       -ex "thread apply all bt" \
                       --args ./build/modules/pluginval/pluginval_artefacts/Release/pluginval \
-                        --validate "./build/${{ env.PROJECT_NAME }}_artefacts/Release/VST3/${{ env.PROJECT_NAME }}.vst3" \
+                        --validate "$HOME/.vst3/Dummy Plugin.vst3" \
                         --strictness-level 10 \
                         --timeout-ms 120000
