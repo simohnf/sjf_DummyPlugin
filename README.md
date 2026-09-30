@@ -20,9 +20,18 @@ Currently demonstrates an audio chain containing:
     - Compressor
     - Flanger
     - Chorus
+    - Tremolo
     - 2 * Filter
+    - Moog Ladder Filter
+    - Time-Domain Spectral Processor
+    - Phaser
+    - Exciter
+    - BitCrush & Sample Reduce
+    - Stereo Spread
+    - Gate
     - Optional oversampling over entire chain
 - Limiter
+- User assignable modulation system****
 
 
 ----
