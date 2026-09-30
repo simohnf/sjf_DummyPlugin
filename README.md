@@ -31,7 +31,7 @@ Currently demonstrates an audio chain containing:
     - Gate
     - Optional oversampling over entire chain
 - Limiter
-- User assignable modulation system****
+- User assignable modulation system
 
 
 ----
