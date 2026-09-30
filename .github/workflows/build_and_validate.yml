@@ -97,7 +97,6 @@ jobs:
                 run: |
                     cmake -B build \
                         -DCMAKE_BUILD_TYPE=Release \
-                        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -g" \
                         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
                         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -117,19 +116,7 @@ jobs:
                 run: cmake --build build --config Release --target pluginval
 
             -   name: Run Pluginval Validation
-                run: |
-                    if [ "$RUNNER_OS" = "Linux" ]; then
-                      xvfb-run -a gdb -batch \
-                        -ex "run" \
-                        -ex "bt full" \
-                        -ex "thread apply all bt" \
-                        --args ./build/modules/pluginval/pluginval \
-                          --validate "./build/${{ env.PROJECT_NAME }}_artefacts/Release/VST3/${{ env.PROJECT_NAME }}.vst3" \
-                          --strictness-level 10 \
-                          --timeout-ms 120000
-                    else
-                      cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
-                    fi
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
 
             -   name: Build macOS installer
                 if: runner.os == 'macOS'
