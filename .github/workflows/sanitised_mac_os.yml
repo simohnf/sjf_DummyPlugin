@@ -24,7 +24,7 @@ permissions:
 
 jobs:
     build:
-        name: Build & Validate (${{ matrix.os }})
+        name: Sanitised Validation (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
 
         strategy:
@@ -111,7 +111,7 @@ jobs:
 #
             # 5. Build, Test, and Validate
             -   name: Build and Validate All Targets Sanitised
-                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Validate_Sanitised
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Validate_Thread_Sanitised
 #
 #            # -   name: Run Unit Tests
 #                # run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Tests
