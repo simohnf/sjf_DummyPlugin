@@ -110,7 +110,7 @@ jobs:
 #
 #
             # 5. Build, Test, and Validate
-            -   name: Build and Validate All Targets - Sanitised
+            -   name: Build and Validate All Targets Sanitised
                 run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Validate_Sanitised
 #
 #            # -   name: Run Unit Tests
