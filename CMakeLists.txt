@@ -7,6 +7,28 @@ cmake_minimum_required(VERSION 3.22)
 
 project(DummyPlugin VERSION 0.0.1)
 
+# ------------------------------------------------------------------------------
+# Sanitizer Configuration Option
+# ------------------------------------------------------------------------------
+option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" ON)
+
+if(ENABLE_SANITIZERS)
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+    else()
+        # macOS / Clang / GCC
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    endif()
+endif()
+
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+
+if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
+    add_compile_options(/fsanitize=thread)
+endif()
+
+
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
 # --- Set Plugin Metadata (Updated by Python script) ---
 set(PLUGIN_CODE "Dumm")
@@ -232,30 +254,10 @@ add_custom_target(${PROJECT_NAME}_Build_then_validate_All
 #===============#===============#===============#===============#===============
 
 # 5. Sanitised validation
-# ------------------------------------------------------------------------------
-# Sanitizer Configuration Option
-# ------------------------------------------------------------------------------
-option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-
-if(ENABLE_SANITIZERS)
-    if(MSVC)
-        add_compile_options(/fsanitize=address)
-    else()
-        # macOS / Clang / GCC
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    endif()
-endif()
-
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-
-if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
-    add_compile_options(/fsanitize=thread)
-endif()
 
 
 # ------------------------------------------------------------------------------
-# 2. Sanitized Validation Target
+# Sanitized Validation Target
 # ------------------------------------------------------------------------------
 if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
     add_custom_target(${PROJECT_NAME}_Validate_Sanitised
