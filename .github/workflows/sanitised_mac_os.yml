@@ -8,14 +8,14 @@
 
 
 
-name: Build and Validate
+name: Sanitised mac os
 
 env:
     PROJECT_NAME: DummyPlugin
 
 on:
     push:
-        branches: ["main"]
+        branches-ignore: ["main"]
         tags: ["v*"] # uses versions to handle releases
     workflow_dispatch:
     
@@ -107,18 +107,20 @@ jobs:
                 run: |
                     cmake -B build -DCMAKE_BUILD_TYPE=Release
 
+#
+#
             # 5. Build, Test, and Validate
-            -   name: Build All Targets
-                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_All
-
-            # -   name: Run Unit Tests
-                # run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Tests
-
-            -   name: Build pluginval
-                run: cmake --build build --config Release --target pluginval
-
-            -   name: Run Pluginval Validation
-                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
+            -   name: Build and Validate All Targets - Sanitised
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Validate_Sanitised
+#
+#            # -   name: Run Unit Tests
+#                # run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_Tests
+#
+#            -   name: Build pluginval
+#                run: cmake --build build --config Release --target pluginval
+#
+#            -   name: Run Pluginval Validation
+#                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
 
             # -   name: Build macOS installer
             #     if: runner.os == 'macOS'
