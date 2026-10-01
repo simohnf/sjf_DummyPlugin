@@ -191,7 +191,7 @@ endif()
 if(APPLE)
     # 1. Validate VST3
     add_custom_target(${PROJECT_NAME}_validate_VST3
-            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
+            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
             DEPENDS ${PROJECT_NAME}_VST3 pluginval
             COMMENT "Validating VST3 bundle with pluginval..."
             VERBATIM
@@ -204,7 +204,7 @@ if(APPLE)
             # 2. Targeted rescan ONLY for your specific plugin's type, subtype, and manufacturer codes
             COMMAND AU_TYPE=$(/usr/libexec/PlistBuddy -c "Print :AudioComponents:0:type" "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component/Contents/Info.plist") && auval -v $AU_TYPE ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
             # 3. Run pluginval
-            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000
+            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
             DEPENDS ${PROJECT_NAME}_AU pluginval
             COMMENT "Validating AU bundle with pluginval..."
             VERBATIM
@@ -214,14 +214,14 @@ else ()
     # 1. Validate VST3 (Linux & Windows)
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000"
+                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose"
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating installed VST3 bundle with pluginval under Xvfb..."
                 VERBATIM
         )
     else()
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000
+                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating VST3 with pluginval..."
                 VERBATIM
