@@ -113,6 +113,9 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
+    if (isSuspended())
+        return;
+
     juce::ignoreUnused (midiMessages);
 
     juce::ScopedNoDenormals noDenormals;
@@ -143,7 +146,6 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
     processor.process(context);
-
 }
 
 void AudioPluginAudioProcessor::processBlockBypassed(AudioBuffer<float> &/*buffer*/,
@@ -174,9 +176,11 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
 {
     if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
     {
+        suspendProcessing(true);
         sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
         params.replaceState(loadedTree);
         sjf::optional_calls::attachToState(processor, params.state);
+        suspendProcessing(false);
     }
 }
 
