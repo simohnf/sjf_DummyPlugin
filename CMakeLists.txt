@@ -7,27 +7,6 @@ cmake_minimum_required(VERSION 3.22)
 
 project(DummyPlugin VERSION 0.0.1)
 
-# ------------------------------------------------------------------------------
-# Sanitizer Configuration Option
-# ------------------------------------------------------------------------------
-option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-
-if(ENABLE_SANITIZERS)
-    if(MSVC)
-        add_compile_options(/fsanitize=address)
-    else()
-        # macOS / Clang / GCC
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    endif()
-endif()
-
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-
-if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
-    add_compile_options(/fsanitize=thread)
-endif()
-
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
 # --- Set Plugin Metadata (Updated by Python script) ---
 set(PLUGIN_CODE "Dumm")
@@ -253,12 +232,32 @@ add_custom_target(${PROJECT_NAME}_Build_then_validate_All
 #===============#===============#===============#===============#===============
 
 # 5. Sanitised validation
+# ------------------------------------------------------------------------------
+# Sanitizer Configuration Option
+# ------------------------------------------------------------------------------
+option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+
+if(ENABLE_SANITIZERS)
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+    else()
+        # macOS / Clang / GCC
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    endif()
+endif()
+
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+
+if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
+    add_compile_options(/fsanitize=thread)
+endif()
 
 
 # ------------------------------------------------------------------------------
 # 2. Sanitized Validation Target
 # ------------------------------------------------------------------------------
-if(NOT ENABLE_SANITIZERS)
+if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
     add_custom_target(${PROJECT_NAME}_Validate_Sanitised
             # 1. Configure the isolated build-san folder
             COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-san"
@@ -284,7 +283,7 @@ if(NOT ENABLE_SANITIZERS)
     )
 endif()
 
-if(NOT ENABLE_TSAN)
+if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
     add_custom_target(${PROJECT_NAME}_Validate_Thread_Sanitised
             # 1. Configure the isolated build-san folder
             COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-tsan"
@@ -324,14 +323,14 @@ if(APPLE)
     # Custom target to invoke installer_mac.py
     add_custom_target(${PROJECT_NAME}_create_installer
             COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/scripts/installer_mac.py"
-                --name "${PLUGIN_NAME}"
-                --version "${PROJECT_VERSION}"
-                --manufacturer "${PLUGIN_MANUFACTURER_CODE}"
-                --plugin-code "${PLUGIN_CODE}"
-                --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
-                --vst3-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>"
-                --au-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_AU>"
-                --stand-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_Standalone>"
+            --name "${PLUGIN_NAME}"
+            --version "${PROJECT_VERSION}"
+            --manufacturer "${PLUGIN_MANUFACTURER_CODE}"
+            --plugin-code "${PLUGIN_CODE}"
+            --build-dir "${CMAKE_CURRENT_BINARY_DIR}"
+            --vst3-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>"
+            --au-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_AU>"
+            --stand-path "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_Standalone>"
             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
             DEPENDS ${PROJECT_NAME}_All
             COMMENT "Generating macOS installer package (.pkg)..."
