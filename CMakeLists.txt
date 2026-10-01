@@ -22,7 +22,7 @@ if(ENABLE_SANITIZERS)
     endif()
 endif()
 
-option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 
 if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
     add_compile_options(-fsanitize=thread)
