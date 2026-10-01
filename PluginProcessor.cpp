@@ -179,7 +179,6 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
         suspendProcessing(true);
         sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
         params.replaceState(loadedTree);
-        sjf::optional_calls::attachToState(processor, params.state);
         suspendProcessing(false);
     }
 }
