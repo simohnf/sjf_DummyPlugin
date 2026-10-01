@@ -10,7 +10,7 @@ project(DummyPlugin VERSION 0.0.1)
 # ------------------------------------------------------------------------------
 # Sanitizer Configuration Option
 # ------------------------------------------------------------------------------
-option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" ON)
+option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
 if(ENABLE_SANITIZERS)
     if(MSVC)
@@ -22,7 +22,7 @@ if(ENABLE_SANITIZERS)
     endif()
 endif()
 
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
 
 if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
     add_compile_options(/fsanitize=thread)
