@@ -26,6 +26,7 @@ option(ENABLE_TSAN "Enable ThreadSanitizer" ON)
 
 if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
     add_compile_options(-fsanitize=thread)
+    add_link_options(-fsanitize=thread)
 endif()
 
 
