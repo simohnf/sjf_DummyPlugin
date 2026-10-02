@@ -11,6 +11,7 @@ project(DummyPlugin VERSION 0.0.1)
 # Sanitizer Configuration Option
 # ------------------------------------------------------------------------------
 option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 
 if(ENABLE_SANITIZERS)
     if(MSVC)
@@ -21,14 +22,6 @@ if(ENABLE_SANITIZERS)
         add_link_options(-fsanitize=address,undefined)
     endif()
 endif()
-
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-
-if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
-    add_compile_options(-fsanitize=thread)
-    add_link_options(-fsanitize=thread)
-endif()
-
 
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
 # --- Set Plugin Metadata (Updated by Python script) ---
@@ -255,63 +248,126 @@ add_custom_target(${PROJECT_NAME}_Build_then_validate_All
 #===============#===============#===============#===============#===============
 
 # 5. Sanitised validation
-
-
-# ------------------------------------------------------------------------------
-# Sanitized Validation Target
-# ------------------------------------------------------------------------------
-if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
-    add_custom_target(${PROJECT_NAME}_Validate_Sanitised
-            # 1. Configure the isolated build-san folder
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-san"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}"
-            -DCMAKE_BUILD_TYPE=$<CONFIG>
-            -DENABLE_SANITIZERS=ON
-
-            # 2. Build and run Unit Tests (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_Tests
-            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
-
-            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_validate_All
-
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Running sanitized unit tests and pluginval validation..."
-            USES_TERMINAL
-            VERBATIM
+if(ENABLE_SANITIZERS OR ENABLE_TSAN)
+    set(SANITIZED_TARGETS
+            ${PROJECT_NAME}
+            ${PROJECT_NAME}_VST3
+            ${PROJECT_NAME}_AU
+            ${PROJECT_NAME}_Standalone
+            ${PROJECT_NAME}_Tests
     )
+
+    if(ENABLE_SANITIZERS)
+        foreach(target IN LISTS SANITIZED_TARGETS)
+            if(TARGET ${target})
+                if(MSVC)
+                    target_compile_options(${target} PRIVATE /fsanitize=address)
+                    target_link_options(${target} PRIVATE /fsanitize=address)
+                else()
+                    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+                    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+                endif()
+            endif()
+        endforeach()
+    else() # TSAN
+        foreach(target IN LISTS SANITIZED_TARGETS)
+            if(TARGET ${target})
+                if(NOT MSVC)
+                    target_compile_options(${target} PRIVATE -fsanitize=thread)
+                    target_link_options(${target} PRIVATE -fsanitize=thread)
+                endif()
+            endif()
+        endforeach()
+    endif()
 endif()
 
+# ------------------------------------------------------------------------------
+# Locate Sanitizer Dynamic Preload Libraries (macOS & Linux)
+# ------------------------------------------------------------------------------
 if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
+    if(APPLE)
+        execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan_osx_dynamic.dylib
+                OUTPUT_VARIABLE ASAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan_osx_dynamic.dylib
+                OUTPUT_VARIABLE TSAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        set(ASAN_PRELOAD_ENV "DYLD_INSERT_LIBRARIES=${ASAN_DYLIB_PATH}")
+        set(TSAN_PRELOAD_ENV "DYLD_INSERT_LIBRARIES=${TSAN_DYLIB_PATH}")
+    elseif(UNIX AND NOT APPLE)
+        execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
+                OUTPUT_VARIABLE ASAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libtsan.so
+                OUTPUT_VARIABLE TSAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        set(ASAN_PRELOAD_ENV "LD_PRELOAD=${ASAN_DYLIB_PATH}")
+        set(TSAN_PRELOAD_ENV "LD_PRELOAD=${TSAN_DYLIB_PATH}")
+    endif()
+endif()
+
+# ------------------------------------------------------------------------------
+# Sanitized Validation Targets
+# ------------------------------------------------------------------------------
+# ==============================================================================
+# Isolated Sanitizer Validation Targets for CLion
+# ==============================================================================
+if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
+    # 1. Locate Sanitizer Dynamic Libraries on Host
+    if(APPLE)
+        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan_osx_dynamic.dylib OUTPUT_VARIABLE ASAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan_osx_dynamic.dylib OUTPUT_VARIABLE TSAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
+    elseif(UNIX AND NOT APPLE)
+        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so OUTPUT_VARIABLE ASAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libtsan.so OUTPUT_VARIABLE TSAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    # 2. ThreadSanitizer Isolated Validation Target
     add_custom_target(${PROJECT_NAME}_Validate_Thread_Sanitised
-            # 1. Configure the isolated build-san folder
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-tsan"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}"
-            -DCMAKE_BUILD_TYPE=$<CONFIG>
-            -DENABLE_TSAN=ON
+            # Step A: Configure isolated sub-build in build-tsan
+            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" -S "${CMAKE_CURRENT_SOURCE_DIR}" -DCMAKE_BUILD_TYPE=$<CONFIG> -DENABLE_TSAN=ON
 
-            # 2. Build and run Unit Tests (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_Tests
-            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
+            # Step B: Build and run Unit Tests
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" --config $<CONFIG> --target ${PROJECT_NAME}_Tests
+            COMMAND "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests"
 
-            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_validate_All
+            # Step C: Build Plugin Formats and pluginval
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" --config $<CONFIG> --target ${PROJECT_NAME}_All --target pluginval
+
+            # Step D: Run pluginval directly in shell with preloaded TSan runtime
+            COMMAND /bin/sh -c "DYLD_INSERT_LIBRARIES='${TSAN_LIB}' TSAN_OPTIONS='halt_on_error=0' '${CMAKE_CURRENT_BINARY_DIR}/build-tsan/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.app/Contents/MacOS/pluginval' --validate '$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose"
 
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Running thread sanitized unit tests and pluginval validation..."
+            COMMENT "Building TSan binaries in isolated directory and validating with pluginval..."
+            USES_TERMINAL
+            VERBATIM
+    )
+
+    # 3. AddressSanitizer + UBSan Isolated Validation Target
+    add_custom_target(${PROJECT_NAME}_Validate_Sanitised
+            # Step A: Configure isolated sub-build in build-san
+            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_CURRENT_BINARY_DIR}/build-san" -S "${CMAKE_CURRENT_SOURCE_DIR}" -DCMAKE_BUILD_TYPE=$<CONFIG> -DENABLE_SANITIZERS=ON
+
+            # Step B: Build and run Unit Tests
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-san" --config $<CONFIG> --target ${PROJECT_NAME}_Tests
+            COMMAND "${CMAKE_CURRENT_BINARY_DIR}/build-san/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests"
+
+            # Step C: Build Plugin Formats and pluginval
+            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-san" --config $<CONFIG> --target ${PROJECT_NAME}_All --target pluginval
+
+            # Step D: Run pluginval directly in shell with preloaded ASan runtime
+            COMMAND /bin/sh -c "DYLD_INSERT_LIBRARIES='${ASAN_LIB}' ASAN_OPTIONS='halt_on_error=0' '${CMAKE_CURRENT_BINARY_DIR}/build-san/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.app/Contents/MacOS/pluginval' --validate '$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose"
+
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMENT "Building ASan binaries in isolated directory and validating with pluginval..."
             USES_TERMINAL
             VERBATIM
     )
 endif()
-
 
 #===============#===============#===============#===============#===============
 #===============#===============#===============#===============#===============
