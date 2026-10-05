@@ -141,7 +141,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    setLatencySamples(processor.getLatencySamples());
+    if ( lastLatency != processor.getLatencySamples())
+        asyncCallback.triggerUpdate();
 
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
@@ -205,6 +206,9 @@ void AudioPluginAudioProcessor::callPrepare()
     const auto numChannels = juce::jmax(getTotalNumInputChannels(), getTotalNumOutputChannels());
     processSpec.numChannels = static_cast<juce::uint32>(numChannels);
     processor.prepare(processSpec);
+    lastLatency = processor.getLatencySamples();
+    setLatencySamples(lastLatency);
+
 }
 
 AudioProcessorParameter * AudioPluginAudioProcessor::getBypassParameter() const

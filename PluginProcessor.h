@@ -58,5 +58,12 @@ private:
     juce::AudioProcessorValueTreeState params;
     juce::dsp::ProcessSpec processSpec{};
 
+    using Callback = std::function<void()>;
+    sjf::helpers::AsyncCallbackInvoker<Callback> asyncCallback{[this]() {
+        lastLatency = processor.getLatencySamples();
+        setLatencySamples(lastLatency);
+    }};
+    int lastLatency{};
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

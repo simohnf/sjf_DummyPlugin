@@ -10,24 +10,31 @@ project(DummyPlugin VERSION 0.0.1)
 # ------------------------------------------------------------------------------
 # Sanitizer Configuration Option
 # ------------------------------------------------------------------------------
-option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-
-if(ENABLE_SANITIZERS)
-    if(MSVC)
+option(ENABLE_ASAN "${PROJECT_NAME} Enable Address Sanitizer" OFF)
+option(ENABLE_TSAN "${PROJECT_NAME} Enable Thread Sanitizer" OFF)
+if (ENABLE_ASAN)
+    if (MSVC)
         add_compile_options(/fsanitize=address)
-    else()
-        # macOS / Clang / GCC
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # also enable UndefinedBehaviorSanitizer
+        # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
         add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    endif()
-endif()
+        link_libraries(-fsanitize=address)
+    endif ()
+    message("${PROJECT_NAME}  Address Sanitizer enabled")
+endif ()
 
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+if (ENABLE_TSAN)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-fsanitize=thread -g -fno-omit-frame-pointer)
+        link_libraries(-fsanitize=thread)
+        message("${PROJECT_NAME} Thread Sanitizer enabled")
+    endif ()
+endif ()
 
-if(ENABLE_TSAN AND NOT ENABLE_SANITIZERS)
-    add_compile_options(-fsanitize=thread)
-    add_link_options(-fsanitize=thread)
-endif()
+if(NOT ENABLE_ASAN AND NOT ENABLE_TSAN)
+    set(PLUGINVAL_ENABLE_RTCHECK ON CACHE BOOL "Disable rtcheck when using sanitizers" FORCE)
+endif ()
 
 
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
@@ -214,7 +221,7 @@ else ()
     # 1. Validate VST3 (Linux & Windows)
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND /bin/sh -c "xvfb-run -a gdb -batch -ex 'run' -ex 'bt full' --args '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process"
+                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process"
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating installed VST3 bundle with pluginval under Xvfb..."
                 VERBATIM
