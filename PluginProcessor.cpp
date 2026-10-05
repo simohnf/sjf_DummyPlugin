@@ -174,15 +174,14 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    MessageManager::callSync([data, sizeInBytes, this]() {
-        if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
-        {
-            sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
-            suspendProcessing(true);
-            params.replaceState(loadedTree);
-            suspendProcessing(false);
-        }
-    });
+
+    if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
+    {
+        suspendProcessing(true);
+        sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
+        params.replaceState(loadedTree);
+        suspendProcessing(false);
+    }
 }
 
 void AudioPluginAudioProcessor::numBusesChanged()
