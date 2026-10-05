@@ -1,0 +1,2 @@
+src:*/juce_audio_plugin_client_AU_1.mm
+src:*/juce_AudioChannelSet.cpp

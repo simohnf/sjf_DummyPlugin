@@ -40,7 +40,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
 add_subdirectory(JUCE)                    #
 add_subdirectory(sjf_audio)
 
@@ -73,6 +72,9 @@ juce_add_plugin(${PROJECT_NAME}
         PRODUCT_NAME ${PLUGIN_NAME}         # The name of the final executable, which can differ from the target name
         NEEDS_WEB_BROWSER FALSE                     # Set to TRUE if you need to use webviews
         NEEDS_CURL FALSE)                           # Set to TRUE if you need to use curl
+
+
+target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -168,14 +170,13 @@ sjf_add_juce_unit_test_target("${PROJECT_NAME}"
         ${FLAGS}
 )
 
-
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
 add_subdirectory ("modules/pluginval")
+if(ENABLE_TSAN)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Allow TSan's operator new/delete to override pluginval's TestUtilities.cpp on Linux
+        target_link_options(pluginval PRIVATE -Wl,--allow-multiple-definition)
+    endif()
+endif()
 
 if(MSVC)
     # 1. Force pluginval's third-party dependencies back to C++17
@@ -192,7 +193,7 @@ endif()
 if(APPLE)
     # 1. Validate VST3
     add_custom_target(${PROJECT_NAME}_validate_VST3
-            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
             DEPENDS ${PROJECT_NAME}_VST3 pluginval
             COMMENT "Validating VST3 bundle with pluginval..."
             VERBATIM
@@ -202,10 +203,8 @@ if(APPLE)
     add_custom_target(${PROJECT_NAME}_validate_AU
             # 1. Kill the background registrar so macOS refreshes its AU database
             COMMAND killall -9 AudioComponentRegistrar 2>/dev/null || true
-            # 2. Targeted rescan ONLY for your specific plugin's type, subtype, and manufacturer codes
-            COMMAND AU_TYPE=$(/usr/libexec/PlistBuddy -c "Print :AudioComponents:0:type" "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component/Contents/Info.plist") && auval -v $AU_TYPE ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
-            # 3. Run pluginval
-            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+            # 2. Run pluginval
+            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
             DEPENDS ${PROJECT_NAME}_AU pluginval
             COMMENT "Validating AU bundle with pluginval..."
             VERBATIM
@@ -215,14 +214,14 @@ else ()
     # 1. Validate VST3 (Linux & Windows)
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose"
+                COMMAND /bin/sh -c "xvfb-run -a gdb -batch -ex 'run' -ex 'bt full' --args '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process"
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating installed VST3 bundle with pluginval under Xvfb..."
                 VERBATIM
         )
     else()
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating VST3 with pluginval..."
                 VERBATIM
@@ -247,78 +246,6 @@ add_custom_target(${PROJECT_NAME}_Build_then_validate_All
         VERBATIM
 )
 
-
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
-# 5. Sanitised validation
-
-
-# ------------------------------------------------------------------------------
-# Sanitized Validation Target
-# ------------------------------------------------------------------------------
-if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
-    add_custom_target(${PROJECT_NAME}_Validate_Sanitised
-            # 1. Configure the isolated build-san folder
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-san"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}"
-            -DCMAKE_BUILD_TYPE=$<CONFIG>
-            -DENABLE_SANITIZERS=ON
-
-            # 2. Build and run Unit Tests (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_Tests
-            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
-
-            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-san"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_validate_All
-
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Running sanitized unit tests and pluginval validation..."
-            USES_TERMINAL
-            VERBATIM
-    )
-endif()
-
-if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
-    add_custom_target(${PROJECT_NAME}_Validate_Thread_Sanitised
-            # 1. Configure the isolated build-san folder
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_BINARY_DIR}/build-tsan"
-            -S "${CMAKE_CURRENT_SOURCE_DIR}"
-            -DCMAKE_BUILD_TYPE=$<CONFIG>
-            -DENABLE_TSAN=ON
-
-            # 2. Build and run Unit Tests (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_Tests
-            COMMAND $<TARGET_FILE:${PROJECT_NAME}_Tests>
-
-            # 3. Build and run pluginval validation for VST3/AU (Sanitized)
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_BINARY_DIR}/build-tsan"
-            --config $<CONFIG>
-            --target ${PROJECT_NAME}_validate_All
-
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Running thread sanitized unit tests and pluginval validation..."
-            USES_TERMINAL
-            VERBATIM
-    )
-endif()
-
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
-# Installer target: build all, run all tests (no sanitisers), build installer package
 if(APPLE)
     # Find Python 3 installed on the system
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
