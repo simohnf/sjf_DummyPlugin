@@ -153,8 +153,9 @@ namespace sjf::plugin_processor_config
                                                                     SFC{"Limiter", "Limiter"},
                                                                     SFC{"OutGain", "Output Gain"}
                                                             );
+
             groupMetadata = std::make_unique<sjf::helpers::ParameterFactory::GroupMetadata>( helpers::ParameterFactory::createMetadataTree(*factory));
-            layout.add(std::move(factory));
+            layout.add(std::move(factory->getAudioProcessorParameterGroup()));
             return layout;
         }
 
