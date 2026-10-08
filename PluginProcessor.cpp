@@ -19,6 +19,33 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
     processor.getProcessor().getProcessor().get<0>().attachAPVTS(params);
     sjf::optional_calls::attachToState(processor, params.state);
 
+    bypassParameter = [&]() -> juce::AudioProcessorParameter* {
+        auto topLevelParams = [&]() {
+            auto& tree = getParameterTree();
+            auto subGroups = tree.getSubgroups(false);
+            jassert(subGroups.size() == 1);
+            auto grp = subGroups[0];
+            while (grp && grp->getParameters(false).size() == 0) {
+                auto sub = grp->getSubgroups(false);
+                jassert(sub.size() == 1);
+                grp = sub[0];
+            }
+
+            return grp;
+        }();
+
+        jassert(topLevelParams);
+
+        const auto params_ =  topLevelParams->getParameters(false);
+        jassert(params_.size() >= 1);
+        for (auto param : params_)
+        {
+            if (auto ranged = dynamic_cast<RangedAudioParameter*>(param); ranged->getParameterID().contains("Bypass"))
+                return param;
+        }
+        jassertfalse;
+        return nullptr;
+    }();
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -213,32 +240,7 @@ void AudioPluginAudioProcessor::callPrepare()
 
 AudioProcessorParameter * AudioPluginAudioProcessor::getBypassParameter() const
 {
-    auto topLevelParams = [&]() {
-        auto& tree = getParameterTree();
-        auto subGroups = tree.getSubgroups(false);
-        jassert(subGroups.size() == 1);
-        auto grp = subGroups[0];
-        while (grp && grp->getParameters(false).size() == 0) {
-            auto sub = grp->getSubgroups(false);
-            jassert(sub.size() == 1);
-            grp = sub[0];
-        }
-
-        return grp;
-    }();
-
-    jassert(topLevelParams);
-
-    const auto params_ =  topLevelParams->getParameters(false);
-    jassert(params_.size() >= 1);
-    for (auto param : params_)
-    {
-        if (auto ranged = dynamic_cast<RangedAudioParameter*>(param); ranged->getParameterID().contains("Bypass"))
-            return param;
-    }
-    jassertfalse;
-    return nullptr;
-
+    return bypassParameter;
 }
 
 //==============================================================================

@@ -65,5 +65,6 @@ private:
     }};
     int lastLatency{};
 
+    juce::AudioProcessorParameter* bypassParameter{nullptr};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
