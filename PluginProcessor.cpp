@@ -16,7 +16,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 {
     sjf::helpers::PresetManager::initAPVTS(params.state, params.processor.getParameterTree(), groupMetaData.get());
 
-    processor.getProcessor().getProcessor().get<0>().attachAPVTS(params);
+    // processor.getProcessor().getProcessor().get<0>().attachAPVTS(params);
+    sjf::optional_calls::attachAPVTS(processor, params);
     sjf::optional_calls::attachToState(processor, params.state);
 
     bypassParameter = [&]() -> juce::AudioProcessorParameter* {
