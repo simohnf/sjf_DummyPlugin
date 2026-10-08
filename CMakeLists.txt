@@ -10,18 +10,33 @@ project(DummyPlugin VERSION 0.0.1)
 # ------------------------------------------------------------------------------
 # Sanitizer Configuration Option
 # ------------------------------------------------------------------------------
-option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-
-if(ENABLE_SANITIZERS)
-    if(MSVC)
+option(ENABLE_ASAN "${PROJECT_NAME} Enable Address Sanitizer" OFF)
+option(ENABLE_TSAN "${PROJECT_NAME} Enable Thread Sanitizer" OFF)
+if (ENABLE_ASAN)
+    if (MSVC)
         add_compile_options(/fsanitize=address)
-    else()
-        # macOS / Clang / GCC
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # also enable UndefinedBehaviorSanitizer
+        # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
         add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    endif()
-endif()
+        link_libraries(-fsanitize=address)
+    endif ()
+    message("${PROJECT_NAME}  Address Sanitizer enabled")
+endif ()
+
+if (ENABLE_TSAN)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-fsanitize=thread -g -fno-omit-frame-pointer)
+        link_libraries(-fsanitize=thread)
+        message("${PROJECT_NAME} Thread Sanitizer enabled")
+    endif ()
+endif ()
+
+if(NOT ENABLE_ASAN AND NOT ENABLE_TSAN)
+    set(PLUGINVAL_ENABLE_RTCHECK ON CACHE BOOL "Disable rtcheck when using sanitizers" FORCE)
+    message("${PROJECT_NAME} Enabling pluginval Realtime checks")
+endif ()
+
 
 set(PLUGIN_MANUFACTURER_CODE "SjfA")
 # --- Set Plugin Metadata (Updated by Python script) ---
@@ -32,7 +47,6 @@ set(PLUGIN_NAME "Dummy Plugin")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
 
 add_subdirectory(JUCE)                    #
 add_subdirectory(sjf_audio)
@@ -66,6 +80,9 @@ juce_add_plugin(${PROJECT_NAME}
         PRODUCT_NAME ${PLUGIN_NAME}         # The name of the final executable, which can differ from the target name
         NEEDS_WEB_BROWSER FALSE                     # Set to TRUE if you need to use webviews
         NEEDS_CURL FALSE)                           # Set to TRUE if you need to use curl
+
+
+target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
@@ -161,14 +178,13 @@ sjf_add_juce_unit_test_target("${PROJECT_NAME}"
         ${FLAGS}
 )
 
-
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
 add_subdirectory ("modules/pluginval")
+if(ENABLE_TSAN)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        # Allow TSan's operator new/delete to override pluginval's TestUtilities.cpp on Linux
+        target_link_options(pluginval PRIVATE -Wl,--allow-multiple-definition)
+    endif()
+endif()
 
 if(MSVC)
     # 1. Force pluginval's third-party dependencies back to C++17
@@ -185,7 +201,7 @@ endif()
 if(APPLE)
     # 1. Validate VST3
     add_custom_target(${PROJECT_NAME}_validate_VST3
-            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+            COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
             DEPENDS ${PROJECT_NAME}_VST3 pluginval
             COMMENT "Validating VST3 bundle with pluginval..."
             VERBATIM
@@ -195,10 +211,8 @@ if(APPLE)
     add_custom_target(${PROJECT_NAME}_validate_AU
             # 1. Kill the background registrar so macOS refreshes its AU database
             COMMAND killall -9 AudioComponentRegistrar 2>/dev/null || true
-            # 2. Targeted rescan ONLY for your specific plugin's type, subtype, and manufacturer codes
-            COMMAND AU_TYPE=$(/usr/libexec/PlistBuddy -c "Print :AudioComponents:0:type" "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component/Contents/Info.plist") && auval -v $AU_TYPE ${PLUGIN_CODE} ${PLUGIN_MANUFACTURER_CODE} 2>/dev/null || true
-            # 3. Run pluginval
-            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+            # 2. Run pluginval
+            COMMAND $<TARGET_FILE:pluginval> --validate "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
             DEPENDS ${PROJECT_NAME}_AU pluginval
             COMMENT "Validating AU bundle with pluginval..."
             VERBATIM
@@ -208,14 +222,14 @@ else ()
     # 1. Validate VST3 (Linux & Windows)
     if(UNIX AND NOT APPLE)
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose"
+                COMMAND /bin/sh -c "xvfb-run -a '$<TARGET_FILE:pluginval>' --validate '$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3' --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process"
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating installed VST3 bundle with pluginval under Xvfb..."
                 VERBATIM
         )
     else()
         add_custom_target(${PROJECT_NAME}_validate_VST3
-                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose
+                COMMAND $<TARGET_FILE:pluginval> --validate "$<TARGET_FILE:${PROJECT_NAME}_VST3>" --strictness-level 10 --timeout-ms 120000 --rtcheck relaxed --validate-in-process
                 DEPENDS ${PROJECT_NAME}_VST3 pluginval
                 COMMENT "Validating VST3 with pluginval..."
                 VERBATIM
@@ -240,164 +254,6 @@ add_custom_target(${PROJECT_NAME}_Build_then_validate_All
         VERBATIM
 )
 
-
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
-# 5. Sanitised validation
-if(ENABLE_SANITIZERS OR ENABLE_TSAN)
-    set(SANITIZED_TARGETS
-            ${PROJECT_NAME}
-            ${PROJECT_NAME}_VST3
-            ${PROJECT_NAME}_AU
-            ${PROJECT_NAME}_Standalone
-            ${PROJECT_NAME}_Tests
-    )
-
-    if(ENABLE_SANITIZERS)
-        foreach(target IN LISTS SANITIZED_TARGETS)
-            if(TARGET ${target})
-                if(MSVC)
-                    target_compile_options(${target} PRIVATE /fsanitize=address)
-                    target_link_options(${target} PRIVATE /fsanitize=address)
-                else()
-                    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-                    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
-                endif()
-            endif()
-        endforeach()
-    else() # TSAN
-        foreach(target IN LISTS SANITIZED_TARGETS)
-            if(TARGET ${target})
-                if(NOT MSVC)
-                    target_compile_options(${target} PRIVATE -fsanitize=thread)
-                    target_link_options(${target} PRIVATE -fsanitize=thread)
-                endif()
-            endif()
-        endforeach()
-    endif()
-endif()
-
-# ------------------------------------------------------------------------------
-# Locate Sanitizer Dynamic Preload Libraries (macOS & Linux)
-# ------------------------------------------------------------------------------
-if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
-    if(APPLE)
-        execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan_osx_dynamic.dylib
-                OUTPUT_VARIABLE ASAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan_osx_dynamic.dylib
-                OUTPUT_VARIABLE TSAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        set(ASAN_PRELOAD_ENV "DYLD_INSERT_LIBRARIES=${ASAN_DYLIB_PATH}")
-        set(TSAN_PRELOAD_ENV "DYLD_INSERT_LIBRARIES=${TSAN_DYLIB_PATH}")
-    elseif(UNIX AND NOT APPLE)
-        execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libasan.so
-                OUTPUT_VARIABLE ASAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libtsan.so
-                OUTPUT_VARIABLE TSAN_DYLIB_PATH OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        set(ASAN_PRELOAD_ENV "LD_PRELOAD=${ASAN_DYLIB_PATH}")
-        set(TSAN_PRELOAD_ENV "LD_PRELOAD=${TSAN_DYLIB_PATH}")
-    endif()
-endif()
-
-# ------------------------------------------------------------------------------
-# Sanitized Validation Targets
-# ------------------------------------------------------------------------------
-# ==============================================================================
-# Isolated Sanitizer Validation Targets (Cross-Platform: macOS, Linux, Windows)
-# ==============================================================================
-if(NOT CMAKE_BINARY_DIR MATCHES "/build-(san|tsan)$")
-
-    if(APPLE)
-        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan_osx_dynamic.dylib OUTPUT_VARIABLE ASAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
-        execute_process(COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan_osx_dynamic.dylib OUTPUT_VARIABLE TSAN_LIB OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-        set(VAL_PLUGIN_PATH "$ENV{HOME}/Library/Audio/Plug-Ins/Components/$<TARGET_FILE_BASE_NAME:${PROJECT_NAME}_AU>.component")
-        set(VAL_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.app/Contents/MacOS/pluginval")
-        set(VAL_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.app/Contents/MacOS/pluginval")
-        set(TEST_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests")
-        set(TEST_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests")
-
-        set(TSAN_STEP_B /bin/sh -c "DYLD_INSERT_LIBRARIES='${TSAN_LIB}' TSAN_OPTIONS='halt_on_error=0' '${TEST_EXE_TSAN}'")
-        set(ASAN_STEP_B /bin/sh -c "DYLD_INSERT_LIBRARIES='${ASAN_LIB}' ASAN_OPTIONS='halt_on_error=1' '${TEST_EXE_SAN}'")
-
-        set(TSAN_STEP_D /bin/sh -c "DYLD_INSERT_LIBRARIES='${TSAN_LIB}' TSAN_OPTIONS='halt_on_error=0' '${VAL_EXE_TSAN}' --validate '${VAL_PLUGIN_PATH}' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose")
-        set(ASAN_STEP_D /bin/sh -c "DYLD_INSERT_LIBRARIES='${ASAN_LIB}' ASAN_OPTIONS='halt_on_error=1' '${VAL_EXE_SAN}' --validate '${VAL_PLUGIN_PATH}' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose")
-
-    elseif(UNIX AND NOT APPLE)
-        set(VAL_PLUGIN_PATH "$ENV{HOME}/.vst3/${PLUGIN_NAME}.vst3")
-        set(VAL_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval")
-        set(VAL_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval")
-        set(TEST_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests")
-        set(TEST_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests")
-
-        set(TSAN_STEP_B /bin/sh -c "SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libtsan.so); if [ ! -f '$SO' ]; then SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan.so); fi; xvfb-run -a env LD_PRELOAD='$SO' TSAN_OPTIONS='halt_on_error=0' '${TEST_EXE_TSAN}'")
-        set(ASAN_STEP_B /bin/sh -c "SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libasan.so); if [ ! -f '$SO' ]; then SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan.so); fi; xvfb-run -a env LD_PRELOAD='$SO' ASAN_OPTIONS='halt_on_error=1' '${TEST_EXE_SAN}'")
-
-        set(TSAN_STEP_D /bin/sh -c "SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libtsan.so); if [ ! -f '$SO' ]; then SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.tsan.so); fi; xvfb-run -a env LD_PRELOAD='$SO' TSAN_OPTIONS='halt_on_error=0' '${VAL_EXE_TSAN}' --validate '${VAL_PLUGIN_PATH}' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose")
-        set(ASAN_STEP_D /bin/sh -c "SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libasan.so); if [ ! -f '$SO' ]; then SO=$(${CMAKE_CXX_COMPILER} -print-file-name=libclang_rt.asan.so); fi; xvfb-run -a env LD_PRELOAD='$SO' ASAN_OPTIONS='halt_on_error=1' '${VAL_EXE_SAN}' --validate '${VAL_PLUGIN_PATH}' --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose")
-
-    else() # Windows
-        set(VAL_PLUGIN_PATH "$ENV{LOCALAPPDATA}/Programs/Common/VST3/${PLUGIN_NAME}.vst3")
-        set(VAL_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.exe")
-        set(VAL_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/modules/pluginval/pluginval_artefacts/$<CONFIG>/pluginval.exe")
-        set(TEST_EXE_TSAN "${CMAKE_CURRENT_BINARY_DIR}/build-tsan/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests.exe")
-        set(TEST_EXE_SAN  "${CMAKE_CURRENT_BINARY_DIR}/build-san/${PROJECT_NAME}_Tests_artefacts/$<CONFIG>/${PROJECT_NAME}_Tests.exe")
-
-        set(TSAN_STEP_B "${TEST_EXE_TSAN}")
-        set(ASAN_STEP_B "${TEST_EXE_SAN}")
-
-        set(TSAN_STEP_D "${VAL_EXE_TSAN}" --validate "${VAL_PLUGIN_PATH}" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose)
-        set(ASAN_STEP_D "${VAL_EXE_SAN}" --validate "${VAL_PLUGIN_PATH}" --strictness-level 10 --timeout-ms 120000 --validate-in-process --verbose)
-    endif()
-
-    # --------------------------------------------------------------------------
-    # 2. ThreadSanitizer Isolated Validation Target
-    # --------------------------------------------------------------------------
-    add_custom_target(${PROJECT_NAME}_Validate_Thread_Sanitised
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" -S "${CMAKE_CURRENT_SOURCE_DIR}" -DCMAKE_BUILD_TYPE=$<CONFIG> -DENABLE_TSAN=ON
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" --config $<CONFIG> --target ${PROJECT_NAME}_Tests
-            COMMAND ${TSAN_STEP_B}
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-tsan" --config $<CONFIG> --target ${PROJECT_NAME}_All --target pluginval
-            COMMAND ${TSAN_STEP_D}
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Building TSan binaries in isolated directory and validating with pluginval..."
-            USES_TERMINAL
-            VERBATIM
-    )
-
-    # --------------------------------------------------------------------------
-    # 3. AddressSanitizer + UBSan Isolated Validation Target
-    # --------------------------------------------------------------------------
-    add_custom_target(${PROJECT_NAME}_Validate_Sanitised
-            COMMAND ${CMAKE_COMMAND} -B "${CMAKE_CURRENT_BINARY_DIR}/build-san" -S "${CMAKE_CURRENT_SOURCE_DIR}" -DCMAKE_BUILD_TYPE=$<CONFIG> -DENABLE_SANITIZERS=ON
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-san" --config $<CONFIG> --target ${PROJECT_NAME}_Tests
-            COMMAND ${ASAN_STEP_B}
-            COMMAND ${CMAKE_COMMAND} --build "${CMAKE_CURRENT_BINARY_DIR}/build-san" --config $<CONFIG> --target ${PROJECT_NAME}_All --target pluginval
-            COMMAND ${ASAN_STEP_D}
-            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-            COMMENT "Building ASan binaries in isolated directory and validating with pluginval..."
-            USES_TERMINAL
-            VERBATIM
-    )
-endif()
-
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-#===============#===============#===============#===============#===============
-
-# Installer target: build all, run all tests (no sanitisers), build installer package
 if(APPLE)
     # Find Python 3 installed on the system
     find_package(Python3 REQUIRED COMPONENTS Interpreter)

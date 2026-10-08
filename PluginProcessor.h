@@ -18,7 +18,7 @@ public:
 
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
-    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) noexcept override;
     void processBlockBypassed(AudioBuffer<float> &buffer, MidiBuffer &midiMessages) override;
     using AudioProcessor::processBlock;
 
@@ -58,5 +58,13 @@ private:
     juce::AudioProcessorValueTreeState params;
     juce::dsp::ProcessSpec processSpec{};
 
+    using Callback = std::function<void()>;
+    sjf::helpers::AsyncCallbackInvoker<Callback> asyncLatencyUpdater{[this]() {
+        lastLatency = processor.getLatencySamples();
+        setLatencySamples(lastLatency);
+    }};
+    int lastLatency{};
+
+    juce::AudioProcessorParameter* bypassParameter{nullptr};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

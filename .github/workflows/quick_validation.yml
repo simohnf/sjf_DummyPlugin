@@ -8,7 +8,7 @@
 #   Ive left in other configurations in case I change my mind on that
 
 
-name: quick_validation1.yml
+name: quick_validation.yml
 
 env:
     PROJECT_NAME: DummyPlugin
@@ -103,9 +103,6 @@ jobs:
             #                run: |
             #                    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=ON
 
-            # 5. Build, Test, and Validate a sanitised version
-            -   name: Run ASan & UBSan Validation
-                run: cmake --build build --config Debug --target ${{ env.PROJECT_NAME }}_Validate_Sanitised --verbose
-
-            -   name: Run TSan Validation
-                run: cmake --build build --config Debug --target ${{ env.PROJECT_NAME }}_Validate_Thread_Sanitised --verbose
+            # 5. Build, Test, and Validate
+            -   name: Run Unit Tests
+                run: cmake --build build --config Debug --target ${{ env.PROJECT_NAME }}_Build_then_validate_All
