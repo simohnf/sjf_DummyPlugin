@@ -59,7 +59,7 @@ private:
     juce::dsp::ProcessSpec processSpec{};
 
     using Callback = std::function<void()>;
-    sjf::helpers::AsyncCallbackInvoker<Callback> asyncCallback{[this]() {
+    sjf::helpers::AsyncCallbackInvoker<Callback> asyncLatencyUpdater{[this]() {
         lastLatency = processor.getLatencySamples();
         setLatencySamples(lastLatency);
     }};

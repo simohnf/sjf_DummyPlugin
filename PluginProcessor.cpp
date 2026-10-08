@@ -169,7 +169,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
 
     if ( lastLatency != processor.getLatencySamples())
-        asyncCallback.triggerUpdate();
+        asyncLatencyUpdater.triggerUpdate();
 
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
