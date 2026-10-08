@@ -138,7 +138,7 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 }
 
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
+                                              juce::MidiBuffer& midiMessages) noexcept
 {
     if (isSuspended() || buffer.getNumSamples() <= 0)
         return;

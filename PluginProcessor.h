@@ -18,7 +18,7 @@ public:
 
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
-    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) noexcept override;
     void processBlockBypassed(AudioBuffer<float> &buffer, MidiBuffer &midiMessages) override;
     using AudioProcessor::processBlock;
 
