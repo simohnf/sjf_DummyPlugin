@@ -12,6 +12,7 @@ project(DummyPlugin VERSION 0.0.1)
 # ------------------------------------------------------------------------------
 option(ENABLE_ASAN "${PROJECT_NAME} Enable Address Sanitizer" OFF)
 option(ENABLE_TSAN "${PROJECT_NAME} Enable Thread Sanitizer" OFF)
+
 if (ENABLE_ASAN)
     if (MSVC)
         add_compile_options(/fsanitize=address)
@@ -81,8 +82,6 @@ juce_add_plugin(${PROJECT_NAME}
         NEEDS_WEB_BROWSER FALSE                     # Set to TRUE if you need to use webviews
         NEEDS_CURL FALSE)                           # Set to TRUE if you need to use curl
 
-
-target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 
 # `juce_generate_juce_header` will create a JuceHeader.h for a given target, which will be generated
 # into your build tree. This should be included with `#include <JuceHeader.h>`. The include path for
