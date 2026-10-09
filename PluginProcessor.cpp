@@ -160,9 +160,9 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         buffer.clear (i, 0, buffer.getNumSamples());
 
 
-    if ( auto playHead = getPlayHead())
+    if ( auto playHead_ = getPlayHead())
     {
-        auto positionInfo = playHead->getPosition();
+        auto positionInfo = playHead_->getPosition();
         if (positionInfo.hasValue())
         {
             processor.setPositionInfo(*positionInfo);
