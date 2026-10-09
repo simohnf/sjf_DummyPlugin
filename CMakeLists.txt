@@ -33,7 +33,7 @@ if (ENABLE_TSAN)
     endif ()
 endif ()
 
-if(NOT ENABLE_ASAN AND NOT ENABLE_TSAN)
+if(NOT ENABLE_ASAN AND NOT ENABLE_TSAN AND NOT WIN32)
     set(PLUGINVAL_ENABLE_RTCHECK ON CACHE BOOL "Disable rtcheck when using sanitizers" FORCE)
     message("${PROJECT_NAME} Enabling pluginval Realtime checks")
 endif ()
