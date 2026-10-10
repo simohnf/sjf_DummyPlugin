@@ -98,7 +98,7 @@ jobs:
                 if: runner.os == 'Linux'
                 run: |
                     cmake -B build \
-                        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+                        -DCMAKE_BUILD_TYPE=Release \
                         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
                         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
