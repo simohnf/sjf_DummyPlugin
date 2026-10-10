@@ -183,6 +183,13 @@ void AudioPluginAudioProcessor::processBlockBypassed(AudioBuffer<float> &/*buffe
     jassertfalse;
 }
 
+
+void AudioPluginAudioProcessor::processBlockBypassed(AudioBuffer<double> &/*buffer*/,
+                                                     MidiBuffer &/*midiMessages*/)
+{
+    jassertfalse;
+}
+
 //==============================================================================
 bool AudioPluginAudioProcessor::hasEditor() const
 {

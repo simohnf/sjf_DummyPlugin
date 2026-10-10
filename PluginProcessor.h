@@ -20,6 +20,7 @@ public:
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) noexcept override;
     void processBlockBypassed(AudioBuffer<float> &buffer, MidiBuffer &midiMessages) override;
+    void processBlockBypassed(juce::AudioBuffer<double>& buffer, juce::MidiBuffer& midiMessages) override;
     using AudioProcessor::processBlock;
 
     //==============================================================================
