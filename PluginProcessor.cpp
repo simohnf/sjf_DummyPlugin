@@ -235,7 +235,7 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
                     if (id.isNotEmpty() && value.isNotEmpty())
                     {
                         if ( auto param = params.getParameter(id))
-                            param->setValueNotifyingHost(param->getValueForText(value));
+                            param->setValue(param->getValueForText(value));
                         else
                             jassertfalse;
                     }
