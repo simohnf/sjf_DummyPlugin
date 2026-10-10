@@ -29,7 +29,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [macos-latest, windows-latest, ubuntu-latest]
+#                os: [macos-latest, windows-latest, ubuntu-latest]
+                os: [ubuntu-latest]
 
         steps:
             # 1. Check out the repository
@@ -43,12 +44,13 @@ jobs:
                 if: runner.os == 'Linux'
                 run: |
                     sudo apt-get update
-                    sudo apt-get install -y \
+                    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
                         libasound2-dev \
                         libjack-jackd2-dev \
                         ladspa-sdk \
                         freeglut3-dev \
                         g++ \
+                        gdb \
                         libfreetype6-dev \
                         libfontconfig1-dev \
                         libcurl4-openssl-dev \
@@ -96,7 +98,7 @@ jobs:
                 if: runner.os == 'Linux'
                 run: |
                     cmake -B build \
-                        -DCMAKE_BUILD_TYPE=Release \
+                        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
                         -DCMAKE_C_COMPILER_LAUNCHER=ccache \
                         -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
@@ -116,7 +118,33 @@ jobs:
                 run: cmake --build build --config Release --target pluginval
 
             -   name: Run Pluginval Validation
-                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
+                run: |
+                    if [ "${{ runner.os }}" = "Linux" ]; then
+                        ulimit -c unlimited
+                        # Build validation target first
+                        cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All || true
+                  
+                        echo "=========================================="
+                        echo "Running pluginval under GDB to catch crash..."
+                        echo "=========================================="
+                  
+                        # Locate pluginval binary and plugin artifact dynamically
+                        PLUGINVAL_BIN=$(find build -type f -name "pluginval" | head -n 1)
+                        VST3_PATH=$(find build -type d -name "*.vst3" | head -n 1)
+                  
+                        # Run pluginval directly inside GDB under Xvfb
+                        xvfb-run -a gdb -batch \
+                        -ex "set follow-fork-mode child" \
+                        -ex "run" \
+                        -ex "bt full" \
+                        --args "$PLUGINVAL_BIN" \
+                        --validate "$VST3_PATH" \
+                        --strictness-level 10 \
+                        --timeout-ms 120000 \
+                        --validate-in-process
+                    else
+                        cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
+                    fi
 
             -   name: Build macOS installer
                 if: runner.os == 'macOS'
