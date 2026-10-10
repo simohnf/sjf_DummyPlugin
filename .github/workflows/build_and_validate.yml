@@ -44,13 +44,12 @@ jobs:
                 if: runner.os == 'Linux'
                 run: |
                     sudo apt-get update
-                    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+                    sudo apt-get install -y \
                         libasound2-dev \
                         libjack-jackd2-dev \
                         ladspa-sdk \
                         freeglut3-dev \
                         g++ \
-                        gdb \
                         libfreetype6-dev \
                         libfontconfig1-dev \
                         libcurl4-openssl-dev \
@@ -118,33 +117,7 @@ jobs:
                 run: cmake --build build --config Release --target pluginval
 
             -   name: Run Pluginval Validation
-                run: |
-                    if [ "${{ runner.os }}" = "Linux" ]; then
-                        ulimit -c unlimited
-                        # Build validation target first
-                        cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All || true
-                  
-                        echo "=========================================="
-                        echo "Running pluginval under GDB to catch crash..."
-                        echo "=========================================="
-                  
-                        # Locate pluginval binary and plugin artifact dynamically
-                        PLUGINVAL_BIN=$(find build -type f -name "pluginval" | head -n 1)
-                        VST3_PATH=$(find build -type d -name "*.vst3" | head -n 1)
-                  
-                        # Run pluginval directly inside GDB under Xvfb
-                        xvfb-run -a gdb -batch \
-                        -ex "set follow-fork-mode child" \
-                        -ex "run" \
-                        -ex "bt full" \
-                        --args "$PLUGINVAL_BIN" \
-                        --validate "$VST3_PATH" \
-                        --strictness-level 10 \
-                        --timeout-ms 120000 \
-                        --validate-in-process
-                    else
-                        cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
-                    fi
+                run: cmake --build build --config Release --target ${{ env.PROJECT_NAME }}_validate_All
 
             -   name: Build macOS installer
                 if: runner.os == 'macOS'
