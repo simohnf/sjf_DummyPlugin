@@ -149,22 +149,32 @@ jobs:
                 shell: bash
                 run: |
                     mkdir -p release_assets
+                    mkdir -p release_bundle
+
                     if [ "${{ runner.os }}" = "macOS" ]; then
-                      # Move .pkg directly to release assets (no double zipping needed)
-                      find build -name "*.pkg" -exec cp {} release_assets/ \;
+                      # Move .pkg files directly into release_assets
+                      find build -name "*.pkg" -exec cp -R {} release_assets/ \;
+                    
+                      # If no .pkg installer exists, create a zip bundle of the artefacts
+                      if ! ls release_assets/*.pkg 1> /dev/null 2>&1; then
+                        find build/*_artefacts -maxdepth 4 \( -name "*.vst3" -o -name "*.component" -o -name "*.app" \) -exec cp -R {} release_bundle/ \;
+                        7z a "release_assets/${PROJECT_NAME}_macOS.zip" ./release_bundle/*
+                      fi
                     else
-                      # Zip non-macOS binaries (.vst3, .exe, etc.)
-                      find build/*_artefacts -maxdepth 4 \( -name "*.vst3" -o -name "*.component" -o -name "*.app" -o -name "*.exe" \) | while read -r plugin; do
-                        base_name=$(basename "$plugin")
-                        7z a "release_assets/${base_name}_${{ runner.os }}.zip" "$plugin"
-                      done
+                      # Copy non-test VST3 / Standalone executables into bundle directory
+                      find build/*_artefacts -maxdepth 4 \( -name "*.vst3" -o -name "*.exe" -o -name "*.AppImage" \) ! -name "*_Tests*" -exec cp -R {} release_bundle/ \;
+                    
+                      # Create a single clean release ZIP containing all artefacts for Windows/Linux
+                      7z a "release_assets/${PROJECT_NAME}_${{ runner.os }}.zip" ./release_bundle/*
                     fi
 
-            # 8. Upload ZIP files to GitHub Release
+            # 8. Upload Plugin Binaries to Release
             -   name: Upload Plugin Binaries to Release
                 if: startsWith(github.ref, 'refs/tags/')
                 uses: softprops/action-gh-release@v2
                 with:
-                    files: release_assets/*.zip
+                    files: |
+                        release_assets/*.zip
+                        release_assets/*.pkg
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
