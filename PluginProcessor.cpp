@@ -210,47 +210,14 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-
     if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
     {
         sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
-        if (MessageManager::existsAndIsLockedByCurrentThread())
-        {
-            suspendProcessing(true);
-            params.replaceState(loadedTree);
-            suspendProcessing(false);
-        }
-        else
-        {
-            for (auto i =0; i < loadedTree.getNumChildren(); ++i)
-            {
-                const static auto paramID = juce::Identifier{"PARAM"};
-                const static auto idID = juce::Identifier{"id"};
-                const static auto valueID = juce::Identifier{"value"};
-                if (auto child = loadedTree.getChild(i); child.hasType(paramID))
-                {
-                    auto xml = child.toXmlString();
-                    auto id = child.getProperty(idID, "").toString();
-                    auto value = child.getProperty(valueID, "").toString();
-                    if (id.isNotEmpty() && value.isNotEmpty())
-                    {
-                        if ( auto param = params.getParameter(id))
-                            param->setValue(param->getValueForText(value));
-                        else
-                            jassertfalse;
-                    }
-                }
-            }
-            suspendProcessing(true);
-            MessageManager::callAsync([loadedTree, this]() {
-                suspendProcessing(true);
-                params.replaceState(loadedTree);
-                suspendProcessing(false);
-            });
+        suspendProcessing(true);
+        params.replaceState(loadedTree);
+        suspendProcessing(false);
 
-            suspendProcessing(false);
-        }
-
+        updateHostDisplay();
     }
 }
 
