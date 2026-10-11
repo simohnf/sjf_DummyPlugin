@@ -213,11 +213,61 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     if (const juce::ValueTree loadedTree = sjf::helpers::PresetManager::toValueTree(data, sizeInBytes); loadedTree.isValid())
     {
         sjf::helpers::PresetManager::initAPVTS(loadedTree, params.processor.getParameterTree(), groupMetaData.get());
-        suspendProcessing(true);
-        params.replaceState(loadedTree);
-        suspendProcessing(false);
+        if (MessageManager::existsAndIsLockedByCurrentThread())
+        {
+            suspendProcessing(true);
+            params.replaceState(loadedTree);
+            suspendProcessing(false);
+        }
+        else
+        {
+            // ---------------------------------------------------------------------
+            // STAGE 1: Synchronously sync all RangedAudioParameters directly
+            // ---------------------------------------------------------------------
+            // Read param values directly from the incoming tree XML/properties
+            for (auto* param : getParameters())
+            {
+                if (auto* rangedParam = dynamic_cast<juce::RangedAudioParameter*>(param))
+                {
+                    auto paramID = rangedParam->getParameterID();
 
-        updateHostDisplay();
+                    // Look for child element or property corresponding to paramID
+                    // APVTS default XML format stores params as <PARAM id="..." value="..."/>
+                    juce::ValueTree paramNode = loadedTree.getChildWithProperty("id", paramID);
+
+                    if (paramNode.isValid() && paramNode.hasProperty("value"))
+                    {
+                        auto v =  paramNode.getProperty("value").toString();
+                        auto unnormalizedValue = static_cast<float>(paramNode.getProperty("value"));
+                        auto normalizedValue = rangedParam->getNormalisableRange().convertTo0to1(unnormalizedValue);
+
+                        // 1. Update the host-facing parameter atomic immediately
+                        rangedParam->setValueNotifyingHost(normalizedValue);
+
+                        // // 2. Explicitly update the raw parameter float pointer used by DSP
+                        if (auto* rawVal = params.getRawParameterValue(paramID))
+                            rawVal->store(unnormalizedValue);
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------------------
+            // STAGE 2: Sync the underlying APVTS ValueTree state purely as data
+            // ---------------------------------------------------------------------
+            // Avoid apvts.replaceState(newTree) because it triggers listener-driven
+            // async updates back onto the parameters. Instead, update the properties
+            // of the existing apvts.state tree directly.
+
+            // Copy non-parameter child trees (e.g. custom preset data, UI state)
+            MessageManager::callAsync([loadedTree, this]() {
+                for (int i = 0; i < loadedTree.getNumChildren(); ++i)
+                {
+                    auto loadedChild = loadedTree.getChild(i);
+                    if (!loadedChild.hasType("PARAM"))
+                        params.state.getOrCreateChildWithName(loadedChild.getType(), nullptr).copyPropertiesAndChildrenFrom(loadedChild, nullptr);
+                }
+            });
+        }
     }
 }
 
