@@ -153,7 +153,7 @@ jobs:
 
                     if [ "${{ runner.os }}" = "macOS" ]; then
                       # Move .pkg files directly into release_assets
-                      find build -name "*.pkg" -exec cp -R {} release_assets/ \;
+                      find build -maxdepth 3 -name "${PROJECT_NAME}*.pkg" -exec cp -R {} release_assets/ \;
                     
                       # If no .pkg installer exists, create a zip bundle of the artefacts
                       if ! ls release_assets/*.pkg 1> /dev/null 2>&1; then
