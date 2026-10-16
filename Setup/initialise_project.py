@@ -26,6 +26,11 @@ def setup_git_repo(target_dir):
         print("Updating submodules...")
         run_git(["submodule", "update", "--init", "--recursive"], cwd=target_dir)
 
+    # Remove old tags
+    run_git(["config", "alias.purge-tags", "!git tag -l | xargs -r git tag -d"], cwd=target_dir)
+    run_git(["purge-tags"], cwd=target_dir)
+    run_git(["config", "--unset", "alias.purge-tags"], cwd=target_dir)
+
     # Clean up remotes and history
     run_git(["remote", "remove", "origin"], cwd=target_dir)
     run_git(["reflog", "expire", "--expire=now", "--all"], cwd=target_dir)
