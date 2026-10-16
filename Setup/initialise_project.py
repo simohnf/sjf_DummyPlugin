@@ -16,23 +16,34 @@ def run_git(args, cwd):
 
 def setup_git_repo(target_dir):
     print("Initializing fresh Git history...")
-    # 1. Completely delete the old .git directory
-    git_dir = target_dir / ".git"
-    if git_dir.exists():
-        shutil.rmtree(git_dir)
+    # 1. Start clean orphan branch with current state staged
+    run_git(["checkout", "--orphan", "fresh-start"], cwd=target_dir)
+    run_git(["add", "-A"], cwd=target_dir)
+    run_git(["commit", "-m", "Initial commit"], cwd=target_dir)
 
-    # 2. Re-initialize a brand new Git repo from scratch
-    run_git(["init"], cwd=target_dir)
+    # 2. Force delete ALL old branches and tags from local refs
+    #    (Uses alias trick so it works natively with your unchanged run_git)
+    run_git([
+        "config", "alias.nuke-refs",
+        "!git for-each-ref --format='%(refname)' refs/heads/ refs/tags/ refs/remotes/ | "
+        "grep -v 'refs/heads/fresh-start$' | "
+        "xargs -r -n 1 git update-ref -d"
+    ], cwd=target_dir)
+    run_git(["nuke-refs"], cwd=target_dir)
+    run_git(["config", "--unset", "alias.nuke-refs"], cwd=target_dir)
+
+    # 3. Rename current orphan branch to main
     run_git(["branch", "-M", "main"], cwd=target_dir)
 
-    # 3. Handle submodules if they exist in the working directory
+    # 4. Update submodules (their .git/modules store remains intact!)
     if (target_dir / ".gitmodules").exists():
         print("Updating submodules...")
         run_git(["submodule", "update", "--init", "--recursive"], cwd=target_dir)
 
-    # 4. Create the brand-new initial commit
-    run_git(["add", "-A"], cwd=target_dir)
-    run_git(["commit", "-m", "Initial commit"], cwd=target_dir)
+    # 5. Completely purge unreferenced objects and remotes
+    run_git(["remote", "remove", "origin"], cwd=target_dir)
+    run_git(["reflog", "expire", "--expire=now", "--all"], cwd=target_dir)
+    run_git(["gc", "--prune=now", "--aggressive"], cwd=target_dir)
 
 def make_code(input_str):
     name = input_str
