@@ -221,18 +221,17 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
         }
         else
         {
-            // ---------------------------------------------------------------------
-            // STAGE 1: Synchronously sync all RangedAudioParameters directly
-            // ---------------------------------------------------------------------
-            // Read param values directly from the incoming tree XML/properties
+            /// When running pluginval tests on the AU th setStateInformation test kept randomly failing
+            /// like ~3 of 300/400 parameters would fail to reset, different parameters each time
+            /// Seems there's a timing issue with the listeners being called when the value tree state is directly replaced on another thread
+            /// but it was so random I couldn't narrow down exactly what was happening.
+            /// This just forces the parameters to update immediately, and then updates everything else at a later date
             for (auto* param : getParameters())
             {
                 if (auto* rangedParam = dynamic_cast<juce::RangedAudioParameter*>(param))
                 {
                     auto paramID = rangedParam->getParameterID();
 
-                    // Look for child element or property corresponding to paramID
-                    // APVTS default XML format stores params as <PARAM id="..." value="..."/>
                     juce::ValueTree paramNode = loadedTree.getChildWithProperty("id", paramID);
 
                     if (paramNode.isValid() && paramNode.hasProperty("value"))
@@ -241,24 +240,14 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
                         auto unnormalizedValue = static_cast<float>(paramNode.getProperty("value"));
                         auto normalizedValue = rangedParam->getNormalisableRange().convertTo0to1(unnormalizedValue);
 
-                        // 1. Update the host-facing parameter atomic immediately
                         rangedParam->setValueNotifyingHost(normalizedValue);
 
-                        // // 2. Explicitly update the raw parameter float pointer used by DSP
                         if (auto* rawVal = params.getRawParameterValue(paramID))
-                            rawVal->store(unnormalizedValue);
+                            rawVal->store(unnormalizedValue); // probably not necessary...
                     }
                 }
             }
 
-            // ---------------------------------------------------------------------
-            // STAGE 2: Sync the underlying APVTS ValueTree state purely as data
-            // ---------------------------------------------------------------------
-            // Avoid apvts.replaceState(newTree) because it triggers listener-driven
-            // async updates back onto the parameters. Instead, update the properties
-            // of the existing apvts.state tree directly.
-
-            // Copy non-parameter child trees (e.g. custom preset data, UI state)
             MessageManager::callAsync([loadedTree, this]() {
                 for (int i = 0; i < loadedTree.getNumChildren(); ++i)
                 {
