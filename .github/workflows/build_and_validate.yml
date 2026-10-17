@@ -7,8 +7,6 @@
 #   - uploads artefacts
 #   Runs on Mac, Windows, and Linux
 
-
-
 name: Build and Validate
 
 env:
@@ -101,15 +99,10 @@ jobs:
                 with:
                     preset: 'cmake'
 
-            # B) Windows: Preserve build directory across workflow runs
-            -   name: Cache Build Directory (Windows)
+            # B) Windows: sccache for MSVC
+            -   name: Setup sccache (Windows)
                 if: runner.os == 'Windows'
-                uses: actions/cache@v4
-                with:
-                    path: build
-                    key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', '**/*.h', '**/*.cpp') }}
-                    restore-keys: |
-                        ${{ runner.os }}-cmake-
+                uses: mozilla/sccache-action@v0.0.8
 
             # 4. Configure CMake (Platform-Specific)
             -   name: Configure CMake (macOS)
@@ -130,8 +123,14 @@ jobs:
 
             -   name: Configure CMake (Windows)
                 if: runner.os == 'Windows'
+                env:
+                    SCCACHE_GHA_ENABLED: "true"
                 run: |
-                    cmake -B build -DCMAKE_BUILD_TYPE=Release
+                    cmake -B build \
+                        -DCMAKE_BUILD_TYPE=Release \
+                        -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+                        -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+                        -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
 
             # 5. Build, Test, and Validate
             -   name: Build All Targets
