@@ -123,6 +123,7 @@ jobs:
 
             -   name: Configure CMake (Windows)
                 if: runner.os == 'Windows'
+                shell: bash
                 env:
                     SCCACHE_GHA_ENABLED: "true"
                 run: |
