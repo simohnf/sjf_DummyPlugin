@@ -82,6 +82,8 @@ def make_code(input_str):
         if w >= len(words):
             w = 0
 
+    ret = ret.lower()
+    ret = ret[0].upper() + ret[1:]
     return ret
 
 def replace_old_names_in_file(filepath, project_name):
