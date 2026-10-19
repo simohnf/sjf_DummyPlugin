@@ -45,8 +45,15 @@ def setup_git_repo(target_dir):
     run_git(["reflog", "expire", "--expire=now", "--all"], cwd=target_dir)
     run_git(["gc", "--prune=now", "--aggressive"], cwd=target_dir)
 
+
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+    return text
+
 def make_code(input_str):
     name = input_str
+    name = remove_prefix(name, "sjf_")
     words = name.split()
     ret = ""
     w = 0
